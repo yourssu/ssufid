@@ -2,6 +2,9 @@
 name = "ssufid"
 version = "0.1.0"
 edition = "2024"
+description = "SSU Announcement Crawler for Everyone"
+license = "MIT"
+authors = ["Hyomin Koo <me@eatsteak.dev>", "이중곤 <2wndrhs@gmail.com>", "Jung Haesung <harryjung1001@gmail.com>"]
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
