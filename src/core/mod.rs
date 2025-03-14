@@ -1,19 +1,20 @@
 use std::collections::HashMap;
 
 use time;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SsufidPost {
     id: String,
     title: String,
     category: String,
     url: String,
-    created_at: time::OffsetDateTime, // OffsetDateTime이 Serialize/Deserialize가 구현되어 있지 않음
+    created_at: time::OffsetDateTime,
     updated_at: Option<time::OffsetDateTime>,
     content: String,
 }
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SsufidResult {
     title: String,
     source: String,
