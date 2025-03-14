@@ -16,14 +16,14 @@ pub struct SsufidPost {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SsufidResult {
+pub struct SsufidSiteData {
     title: String,
     source: String,
     description: String,
     items: Vec<SsufidPost>,
 }
 
-impl SsufidResult {
+impl SsufidSiteData {
     pub fn to_rss(&self) -> String {
         // convert to RSS format file
         todo!()
@@ -43,7 +43,7 @@ impl SsufidCore {
         }
     }
 
-    pub async fn run<T: SsufidPlugin>(&mut self, plugin: T) -> Result<SsufidResult, SsufidError> {
+    pub async fn run<T: SsufidPlugin>(&mut self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
         let new_entries = plugin.crawl().await?;
         let old_entries = match self.cache.get(T::IDENTIFIER) {
             Some(entries) => entries,
