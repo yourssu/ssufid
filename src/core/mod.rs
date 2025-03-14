@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use time;
 use serde::{Serialize, Deserialize};
+use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsufidPost {
@@ -66,6 +67,9 @@ pub trait SsufidPlugin {
     async fn crawl(&self) -> Result<Vec<SsufidPost>, SsufidError>;
 }
 
+#[derive(Debug, Error)]
 pub enum SsufidError {
+    #[error("crawl error")]
     CrawlError,
+    // TODO: 다양한 에러 타입 정의
 }

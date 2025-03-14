@@ -8,4 +8,5 @@ authors = ["Hyomin Koo <me@eatsteak.dev>", "이중곤 <2wndrhs@gmail.com>", "Jun
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0.12"
 time = { version = "0.3.39", features = ["serde"] }
