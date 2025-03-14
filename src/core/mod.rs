@@ -31,12 +31,14 @@ impl SsufidResult {
 
 pub struct SsufidCore {
     cache: HashMap<String, Vec<SsufidPost>>,
+    cache_dir: String,
 }
 
 impl SsufidCore {
-    pub fn new() -> Self {
+    pub fn new(cache_dir: &str) -> Self {
         Self {
-            cache: HashMap::new()
+            cache: HashMap::new(),
+            cache_dir: cache_dir.to_string(),
         }
     }
 
