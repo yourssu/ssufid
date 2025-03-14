@@ -29,11 +29,11 @@ impl SsufidResult {
     }
 }
 
-pub struct Core {
+pub struct SsufidCore {
     cache: HashMap<String, Vec<SsufidPost>>,
 }
 
-impl Core {
+impl SsufidCore {
     pub fn new() -> Self {
         Self {
             cache: HashMap::new()
