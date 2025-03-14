@@ -56,7 +56,7 @@ impl SsufidCore {
         todo!()
     }
 
-    pub async fn dispose_cache(&self) -> Result<(), std::io::Error> {
+    pub async fn save_cache(&self) -> Result<(), std::io::Error> {
         // Save all caches into files
         todo!()
     }
