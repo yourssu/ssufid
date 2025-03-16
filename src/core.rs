@@ -66,7 +66,7 @@ impl SsufidCore {
 
 pub trait SsufidPlugin {
     const IDENTIFIER: &'static str;
-    async fn crawl(&self) -> Result<Vec<SsufidPost>, SsufidError>;
+    fn crawl(&self) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
 }
 
 #[derive(Debug, Error)]
