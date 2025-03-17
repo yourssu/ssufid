@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use time;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use time;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsufidPost {
@@ -32,6 +32,7 @@ impl SsufidSiteData {
 
 pub struct SsufidCore {
     cache: HashMap<String, Vec<SsufidPost>>,
+    #[allow(dead_code)]
     cache_dir: String,
 }
 
@@ -45,12 +46,13 @@ impl SsufidCore {
 
     pub async fn run<T: SsufidPlugin>(&mut self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
         let new_entries = plugin.crawl().await?;
+        #[allow(unused_variables)]
         let old_entries = match self.cache.get(T::IDENTIFIER) {
             Some(entries) => entries,
-            None => todo!("retrieve cache from file")
+            None => todo!("retrieve cache from file"),
         };
         self.cache.insert(T::IDENTIFIER.to_string(), new_entries);
-        
+
         // Compare with new and old: `updated_at` 설정
         // and return the result
         todo!()
@@ -64,7 +66,7 @@ impl SsufidCore {
 
 pub trait SsufidPlugin {
     const IDENTIFIER: &'static str;
-    async fn crawl(&self) -> Result<Vec<SsufidPost>, SsufidError>;
+    fn crawl(&self) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
 }
 
 #[derive(Debug, Error)]
