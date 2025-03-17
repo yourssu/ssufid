@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use ssufid::{core::SsufidCore, plugins::example::ExamplePlugin};
+use ssufid::{core::SsufidCore, plugins::ssu_catch_plugin::SsuCatchPlugin};
 use tokio::io::AsyncWriteExt;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let core = SsufidCore::new("./.ssufid/cache");
 
-    let site = core.run(ExamplePlugin).await?;
+    let site = core.run(SsuCatchPlugin).await?;
 
     let out_dir = Path::new("./out/example");
     tokio::fs::create_dir_all(out_dir).await?;
