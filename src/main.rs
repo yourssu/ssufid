@@ -5,7 +5,7 @@ use tokio::io::AsyncWriteExt;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let mut core = SsufidCore::new("./.ssufid/cache");
+    let core = SsufidCore::new("./.ssufid/cache");
 
     let site = core.run(ExamplePlugin).await?;
 

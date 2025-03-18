@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time;
+use tokio::sync::RwLock;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SsufidPost {
@@ -31,7 +32,7 @@ impl SsufidSiteData {
 }
 
 pub struct SsufidCore {
-    cache: HashMap<String, Vec<SsufidPost>>,
+    cache: Arc<RwLock<HashMap<String, Vec<SsufidPost>>>>,
     #[allow(dead_code)]
     cache_dir: String,
 }
@@ -39,23 +40,32 @@ pub struct SsufidCore {
 impl SsufidCore {
     pub fn new(cache_dir: &str) -> Self {
         Self {
-            cache: HashMap::new(),
+            cache: Arc::new(RwLock::new(HashMap::new())),
             cache_dir: cache_dir.to_string(),
         }
     }
 
-    pub async fn run<T: SsufidPlugin>(&mut self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
+    pub async fn run<T: SsufidPlugin>(&self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
         let new_entries = plugin.crawl().await?;
-        #[allow(unused_variables)]
-        let old_entries = match self.cache.get(T::IDENTIFIER) {
-            Some(entries) => entries,
-            None => todo!("retrieve cache from file"),
+        let cache = Arc::clone(&self.cache);
+        #[allow(unused_variables, clippy::let_unit_value)]
+        let ret = {
+            let cache = cache.read().await;
+            #[allow(unused_variables)]
+            let old_entries = match cache.get(T::IDENTIFIER) {
+                Some(entries) => entries,
+                None => todo!("retrieve cache from file"),
+            };
+    
+            // Compare with new and old: `updated_at` 설정
+            // and return the result
         };
-        self.cache.insert(T::IDENTIFIER.to_string(), new_entries);
-
-        // Compare with new and old: `updated_at` 설정
-        // and return the result
+        {
+            let mut cache = cache.write().await;
+            cache.insert(T::IDENTIFIER.to_string(), new_entries);
+        }
         todo!()
+        // Ok(ret)
     }
 
     pub async fn save_cache(&self) -> Result<(), std::io::Error> {
@@ -66,7 +76,9 @@ impl SsufidCore {
 
 pub trait SsufidPlugin {
     const IDENTIFIER: &'static str;
-    fn crawl(&self) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
+    fn crawl(
+        &self,
+    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
 }
 
 #[derive(Debug, Error)]
