@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, sync::Arc};
+use std::{collections::HashMap, sync::Arc, vec};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -48,24 +48,31 @@ impl SsufidCore {
     pub async fn run<T: SsufidPlugin>(&self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
         let new_entries = plugin.crawl().await?;
         let cache = Arc::clone(&self.cache);
-        #[allow(unused_variables, clippy::let_unit_value)]
-        let ret = {
+        #[allow(unused_variables)]
+        let updated_entries = {
+            // read lock scope
             let cache = cache.read().await;
             #[allow(unused_variables)]
             let old_entries = match cache.get(T::IDENTIFIER) {
                 Some(entries) => entries,
-                None => todo!("retrieve cache from file"),
+                None => &self.read_cache(T::IDENTIFIER).await?,
             };
 
             // Compare with new and old: `updated_at` 설정
             // and return the result
+            vec![]
         };
         {
+            // write lock scope
             let mut cache = cache.write().await;
             cache.insert(T::IDENTIFIER.to_string(), new_entries);
         }
-        todo!()
-        // Ok(ret)
+        Ok(SsufidSiteData {
+            title: "TODO".to_string(), // T::TITLE
+            source: T::IDENTIFIER.to_string(),
+            description: "TODO".to_string(), // T::DESC
+            items: updated_entries,
+        })
     }
 
     pub async fn save_cache(&self) -> Result<(), std::io::Error> {
@@ -73,11 +80,18 @@ impl SsufidCore {
         todo!()
     }
 
-    #[allow(dead_code)]
-    async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, Box<dyn Error>> {
+    async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
         let path = format!("{}/{}.json", self.cache_dir, id);
-        let content = tokio::fs::read_to_string(&path).await?;
-        let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
+        // TODO replace to `?`
+        let content = match tokio::fs::read_to_string(&path).await {
+            Ok(items) => items,
+            Err(_) => return Err(SsufidError::FileIOError),
+        };
+        // TODO
+        let items: Vec<SsufidPost> = match serde_json::from_str(&content) {
+            Ok(items) => items,
+            Err(_) => return Err(SsufidError::FileIOError),
+        };
         Ok(items)
     }
 }
@@ -93,6 +107,8 @@ pub trait SsufidPlugin {
 pub enum SsufidError {
     #[error("crawl error")]
     CrawlError,
+    #[error("file error")]
+    FileIOError, // (임시)
     // TODO: 다양한 에러 타입 정의
 }
 
