@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc, vec};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -75,9 +76,23 @@ impl SsufidCore {
         })
     }
 
-    pub async fn save_cache(&self) -> Result<(), std::io::Error> {
+    pub async fn save_cache(&self) -> Result<(), SsufidError> {
         // Save all caches into files
-        todo!()
+        let cache = Arc::clone(&self.cache);
+        let cache = cache.read().await;
+        let dir = std::path::Path::new(&self.cache_dir);
+        tokio::fs::create_dir_all(dir).await.unwrap();
+
+        for (id, posts) in &*cache {
+            let json = serde_json::to_string_pretty(&posts).unwrap();
+            // TODO replace to `?`
+            let mut file = match tokio::fs::File::create(dir.join(format!("{}.json", id))).await {
+                Ok(f) => f,
+                Err(_) => return Err(SsufidError::FileIOError),
+            };
+            file.write_all(json.as_bytes()).await.unwrap();
+        }
+        Ok(())
     }
 
     async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
@@ -107,8 +122,10 @@ pub trait SsufidPlugin {
 pub enum SsufidError {
     #[error("crawl error")]
     CrawlError,
+
+    // 임시
     #[error("file error")]
-    FileIOError, // (임시)
+    FileIOError,
     // TODO: 다양한 에러 타입 정의
 }
 

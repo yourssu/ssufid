@@ -18,5 +18,7 @@ async fn main() -> eyre::Result<()> {
     // let example_rss = site.to_rss()?;
     // TODO: Write rss structure to xml
     example_file.write_all(example_json.as_bytes()).await?;
+
+    core.save_cache().await?;
     Ok(())
 }
