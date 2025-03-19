@@ -1,11 +1,11 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, error::Error, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time;
 use tokio::sync::RwLock;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     id: String,
     title: String,
@@ -16,7 +16,7 @@ pub struct SsufidPost {
     content: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidSiteData {
     title: String,
     source: String,
@@ -56,7 +56,7 @@ impl SsufidCore {
                 Some(entries) => entries,
                 None => todo!("retrieve cache from file"),
             };
-    
+
             // Compare with new and old: `updated_at` 설정
             // and return the result
         };
@@ -72,6 +72,14 @@ impl SsufidCore {
         // Save all caches into files
         todo!()
     }
+
+    #[allow(dead_code)]
+    async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, Box<dyn Error>> {
+        let path = format!("{}/{}.json", self.cache_dir, id);
+        let content = tokio::fs::read_to_string(&path).await?;
+        let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
+        Ok(items)
+    }
 }
 
 pub trait SsufidPlugin {
@@ -86,4 +94,50 @@ pub enum SsufidError {
     #[error("crawl error")]
     CrawlError,
     // TODO: 다양한 에러 타입 정의
+}
+
+// 임시 테스트
+#[cfg(test)]
+mod tests {
+    use tokio::io::AsyncWriteExt;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn core_read_cache_test() {
+        let mock = vec![
+            SsufidPost {
+                id: "asdf".to_string(),
+                title: "asdf".to_string(),
+                category: "asdf".to_string(),
+                url: "asdf".to_string(),
+                created_at: time::OffsetDateTime::now_utc(),
+                updated_at: None,
+                content: "asdf".to_string(),
+            },
+            SsufidPost {
+                id: "asdf".to_string(),
+                title: "asdf".to_string(),
+                category: "asdf".to_string(),
+                url: "asdf".to_string(),
+                created_at: time::OffsetDateTime::now_utc(),
+                updated_at: Some(time::OffsetDateTime::now_utc()),
+                content: "asdf".to_string(),
+            },
+        ];
+
+        // write mock data
+        let test_data_str = serde_json::to_string_pretty(&mock).unwrap();
+        let dir = std::path::Path::new("./.ssufid/cache_test");
+        tokio::fs::create_dir_all(dir).await.unwrap();
+        let mut test_file = tokio::fs::File::create(dir.join("test.json"))
+            .await
+            .unwrap();
+        test_file.write_all(test_data_str.as_bytes()).await.unwrap();
+
+        // read data and compare
+        let core = SsufidCore::new("./.ssufid/cache_test");
+        let read_data = core.read_cache("test").await.unwrap();
+        assert_eq!(mock, read_data);
+    }
 }
