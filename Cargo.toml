@@ -4,7 +4,11 @@ version = "0.1.0"
 edition = "2024"
 description = "SSU Announcement Crawler for Everyone"
 license = "MIT"
-authors = ["Hyomin Koo <me@eatsteak.dev>", "이중곤 <2wndrhs@gmail.com>", "Jung Haesung <harryjung1001@gmail.com>"]
+authors = [
+    "Hyomin Koo <me@eatsteak.dev>",
+    "이중곤 <2wndrhs@gmail.com>",
+    "Jung Haesung <harryjung1001@gmail.com>",
+]
 
 [features]
 default = ['rss']
@@ -17,7 +21,12 @@ scraper = "0.23.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
 thiserror = "2.0.12"
-time = { version = "0.3.40", features = ["serde", "formatting"] }
+time = { version = "0.3.40", features = [
+    "serde",
+    "macros",
+    "formatting",
+    "parsing",
+] }
 tokio = { version = "1.44.1", features = ["full"] }
 rss = { version = "2.0", optional = true }
 
