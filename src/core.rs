@@ -34,7 +34,6 @@ impl SsufidSiteData {
 
 pub struct SsufidCore {
     cache: Arc<RwLock<HashMap<String, Vec<SsufidPost>>>>,
-    #[allow(dead_code)]
     cache_dir: String,
 }
 
@@ -49,7 +48,6 @@ impl SsufidCore {
     pub async fn run<T: SsufidPlugin>(&self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
         let new_entries = plugin.crawl().await?;
         let cache = Arc::clone(&self.cache);
-        #[allow(unused_variables)]
         let updated_entries = {
             // read lock scope
             let cache = cache.read().await;
@@ -85,14 +83,14 @@ impl SsufidCore {
 
         for (id, posts) in &*cache {
             let json = serde_json::to_string_pretty(&posts).unwrap();
-            let mut file = tokio::fs::File::create(dir.join(format!("{}.json", id))).await?;
+            let mut file = tokio::fs::File::create(dir.join(format!("{id}.json"))).await?;
             file.write_all(json.as_bytes()).await.unwrap();
         }
         Ok(())
     }
 
     async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
-        let path = format!("{}/{}.json", self.cache_dir, id);
+        let path = std::path::Path::new(&self.cache_dir).join(format!("{id}.json"));
         let content = tokio::fs::read_to_string(&path).await?;
         let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
@@ -123,7 +121,7 @@ pub enum SsufidError {
 mod tests {
     use tokio::io::AsyncWriteExt;
 
-    use super::*;
+    use super::{SsufidCore, SsufidPost};
 
     #[tokio::test]
     async fn core_read_cache_test() {
