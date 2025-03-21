@@ -85,11 +85,7 @@ impl SsufidCore {
 
         for (id, posts) in &*cache {
             let json = serde_json::to_string_pretty(&posts).unwrap();
-            // TODO replace to `?`
-            let mut file = match tokio::fs::File::create(dir.join(format!("{}.json", id))).await {
-                Ok(f) => f,
-                Err(_) => return Err(SsufidError::FileIOError),
-            };
+            let mut file = tokio::fs::File::create(dir.join(format!("{}.json", id))).await?;
             file.write_all(json.as_bytes()).await.unwrap();
         }
         Ok(())
@@ -97,16 +93,8 @@ impl SsufidCore {
 
     async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
         let path = format!("{}/{}.json", self.cache_dir, id);
-        // TODO replace to `?`
-        let content = match tokio::fs::read_to_string(&path).await {
-            Ok(items) => items,
-            Err(_) => return Err(SsufidError::FileIOError),
-        };
-        // TODO
-        let items: Vec<SsufidPost> = match serde_json::from_str(&content) {
-            Ok(items) => items,
-            Err(_) => return Err(SsufidError::FileIOError),
-        };
+        let content = tokio::fs::read_to_string(&path).await?;
+        let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
     }
 }
@@ -120,13 +108,14 @@ pub trait SsufidPlugin {
 
 #[derive(Debug, Error)]
 pub enum SsufidError {
-    #[error("crawl error")]
-    CrawlError,
+    #[error("Crawl error: {0}")]
+    CrawlError(String),
 
-    // 임시
-    #[error("file error")]
-    FileIOError,
-    // TODO: 다양한 에러 타입 정의
+    #[error("File I/O error: {0}")]
+    FileIOError(#[from] std::io::Error),
+    
+    #[error("Serialization error: {0}")]
+    SerializationError(#[from] serde_json::Error),
 }
 
 // 임시 테스트
