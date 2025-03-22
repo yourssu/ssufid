@@ -5,7 +5,7 @@ use tokio::io::AsyncWriteExt;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let mut core = SsufidCore::new("./.ssufid/cache");
+    let core = SsufidCore::new("./.ssufid/cache");
 
     let site = core.run(ExamplePlugin).await?;
 
@@ -18,5 +18,7 @@ async fn main() -> eyre::Result<()> {
     // let example_rss = site.to_rss()?;
     // TODO: Write rss structure to xml
     example_file.write_all(example_json.as_bytes()).await?;
+
+    core.save_cache().await?;
     Ok(())
 }
