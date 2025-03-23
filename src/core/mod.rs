@@ -25,10 +25,10 @@ pub struct SsufidSiteData {
     items: Vec<SsufidPost>,
 }
 
+#[cfg(feature = "rss")]
 impl SsufidSiteData {
-    pub fn to_rss(&self) -> String {
-        // convert to RSS format file
-        todo!()
+    pub fn to_rss(self) -> ::rss::Channel {
+        self.into()
     }
 }
 
@@ -111,7 +111,7 @@ pub enum SsufidError {
 
     #[error("File I/O error: {0}")]
     FileIOError(#[from] std::io::Error),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 }
@@ -161,3 +161,6 @@ mod tests {
         assert_eq!(mock, read_data);
     }
 }
+
+#[cfg(feature = "rss")]
+pub mod rss;
