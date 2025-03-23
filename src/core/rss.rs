@@ -4,28 +4,28 @@ use time::format_description::well_known::Rfc2822;
 use super::{SsufidPost, SsufidSiteData};
 
 impl From<SsufidPost> for rss::Item {
-    fn from(value: SsufidPost) -> Self {
+    fn from(post: SsufidPost) -> Self {
         ItemBuilder::default()
-            .title(value.title)
-            .link(value.url)
-            .pub_date(value.created_at.format(&Rfc2822).unwrap())
+            .title(post.title)
+            .link(post.url)
+            .pub_date(post.created_at.format(&Rfc2822).unwrap())
             .guid::<rss::Guid>(rss::Guid {
-                value: value.id,
+                value: post.id,
                 permalink: false,
             })
-            .content(value.content)
+            .content(post.content)
             .build()
     }
 }
 
 impl From<SsufidSiteData> for rss::Channel {
-    fn from(value: SsufidSiteData) -> Self {
+    fn from(site: SsufidSiteData) -> Self {
         ChannelBuilder::default()
-            .title(value.title)
-            .link(value.source)
-            .description(value.description)
+            .title(site.title)
+            .link(site.source)
+            .description(site.description)
             .items(
-                value
+                site
                     .items
                     .into_iter()
                     .map(SsufidPost::into)
