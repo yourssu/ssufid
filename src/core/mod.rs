@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, vec};
+use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -6,7 +6,7 @@ use time;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     id: String,
     title: String,
@@ -17,7 +17,16 @@ pub struct SsufidPost {
     content: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+impl SsufidPost {
+    pub fn contents_eq(&self, other: &SsufidPost) -> bool {
+        self.id.trim() == other.id.trim()
+            && self.title.trim() == other.title.trim()
+            && self.category.trim() == other.category.trim()
+            && self.content.trim() == other.content.trim()
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidSiteData {
     title: String,
     source: String,
@@ -59,14 +68,12 @@ impl SsufidCore {
                 None => &self.read_cache(T::IDENTIFIER).await?,
             };
 
-            // Compare with new and old: `updated_at` 설정
-            // and return the result
-            vec![]
+            inject_update_date(old_entries, new_entries)
         };
         {
             // write lock scope
             let mut cache = cache.write().await;
-            cache.insert(T::IDENTIFIER.to_string(), new_entries);
+            cache.insert(T::IDENTIFIER.to_string(), updated_entries.clone());
         }
         Ok(SsufidSiteData {
             title: T::TITLE.to_string(),
@@ -97,6 +104,38 @@ impl SsufidCore {
         let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
     }
+}
+
+fn inject_update_date(
+    old_entries: &[SsufidPost],
+    new_entries: impl IntoIterator<Item = SsufidPost>,
+) -> Vec<SsufidPost> {
+    let old_entries_map = old_entries
+        .iter()
+        .map(|post: &SsufidPost| (post.id.clone(), post))
+        .collect::<HashMap<String, &SsufidPost>>();
+    let current_time = time::OffsetDateTime::now_utc();
+    new_entries
+        .into_iter()
+        .map(|post| {
+            // 업데이트 정보를 플러그인이 제공했다면 자체 계산 제외
+            if post.updated_at.is_some() {
+                return post;
+            }
+            if let Some(old) = old_entries_map.get(&post.id) {
+                let old = *old;
+                if old.contents_eq(&post) {
+                    return post;
+                }
+                SsufidPost {
+                    updated_at: Some(current_time),
+                    ..post
+                }
+            } else {
+                post
+            }
+        })
+        .collect()
 }
 
 pub trait SsufidPlugin {
