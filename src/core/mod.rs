@@ -67,9 +67,9 @@ impl SsufidCore {
             cache.insert(T::IDENTIFIER.to_string(), new_entries);
         }
         Ok(SsufidSiteData {
-            title: "TODO".to_string(), // T::TITLE
+            title: T::TITLE.to_string(),
             source: T::IDENTIFIER.to_string(),
-            description: "TODO".to_string(), // T::DESC
+            description: T::DESC.to_string(),
             items: updated_entries,
         })
     }
@@ -98,7 +98,10 @@ impl SsufidCore {
 }
 
 pub trait SsufidPlugin {
+    const TITLE: &'static str;
     const IDENTIFIER: &'static str;
+    const DESC: &'static str;
+
     fn crawl(
         &self,
     ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
