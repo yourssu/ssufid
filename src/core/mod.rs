@@ -38,6 +38,8 @@ pub struct SsufidCore {
 }
 
 impl SsufidCore {
+    const POST_COUNT_LIMIT: u32 = 100;
+
     pub fn new(cache_dir: &str) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
@@ -46,7 +48,7 @@ impl SsufidCore {
     }
 
     pub async fn run<T: SsufidPlugin>(&self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
-        let new_entries = plugin.crawl().await?;
+        let new_entries = plugin.crawl(Self::POST_COUNT_LIMIT).await?;
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -104,6 +106,7 @@ pub trait SsufidPlugin {
 
     fn crawl(
         &self,
+        max_post_cnt: u32,
     ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
 }
 
