@@ -1,4 +1,7 @@
+use std::borrow::Cow;
+
 use scraper::{Html, Selector};
+use url::Url;
 
 use crate::core::{SsufidError, SsufidPlugin, SsufidPost};
 use time::{Date, format_description, macros::offset};
@@ -58,6 +61,17 @@ impl SsufidPlugin for SsuCatchPlugin {
                     .unwrap_or("")
                     .to_string();
 
+                let id = Url::parse(&url)
+                    .unwrap()
+                    .query_pairs()
+                    .find_map(
+                        |(key, value)| {
+                            if key == "slug" { Some(value) } else { None }
+                        },
+                    )
+                    .unwrap_or(Cow::Borrowed(""))
+                    .to_string();
+
                 let category_title_span = li.select(&category_title_selector).next().unwrap();
 
                 let spans = category_title_span
@@ -69,7 +83,7 @@ impl SsufidPlugin for SsuCatchPlugin {
                 let title = spans[1].clone();
 
                 SsufidPost {
-                    id: "".to_string(),
+                    id,
                     title,
                     category,
                     url,
