@@ -25,8 +25,7 @@ impl From<SsufidSiteData> for rss::Channel {
             .link(site.source)
             .description(site.description)
             .items(
-                site
-                    .items
+                site.items
                     .into_iter()
                     .map(SsufidPost::into)
                     .collect::<Vec<rss::Item>>(),
