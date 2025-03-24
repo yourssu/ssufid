@@ -71,7 +71,7 @@ impl SsufidCore {
         Ok(SsufidSiteData {
             title: T::TITLE.to_string(),
             source: T::IDENTIFIER.to_string(),
-            description: T::DESC.to_string(),
+            description: T::DESCRIPTION.to_string(),
             items: updated_entries,
         })
     }
@@ -102,11 +102,11 @@ impl SsufidCore {
 pub trait SsufidPlugin {
     const TITLE: &'static str;
     const IDENTIFIER: &'static str;
-    const DESC: &'static str;
+    const DESCRIPTION: &'static str;
 
     fn crawl(
         &self,
-        max_post_cnt: u32,
+        posts_limit: u32,
     ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
 }
 
