@@ -9,9 +9,9 @@ use time::{Date, format_description, macros::offset};
 pub struct SsuCatchPlugin;
 
 impl SsufidPlugin for SsuCatchPlugin {
-    const IDENTIFIER: &'static str = "SSU Catch";
-    const TITLE: &'static str = "SSU Catch";
-    const DESCRIPTION: &'static str = "SSU Catch plugin";
+    const IDENTIFIER: &'static str = "ssu_catch";
+    const TITLE: &'static str = "숭실대학교 공지사항";
+    const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, SsufidError> {
         let url = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
