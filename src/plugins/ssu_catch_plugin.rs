@@ -16,6 +16,7 @@ struct Selectors {
     category_title: Selector,
     url: Selector,
     content: Selector,
+    #[allow(dead_code)]
     last_page: Selector,
 }
 
@@ -151,6 +152,7 @@ impl SsuCatchPlugin {
         Ok(content)
     }
 
+    #[allow(dead_code)]
     fn get_last_page_number(&self, html: &str, selectors: &Selectors) -> u32 {
         let document = Html::parse_document(html);
 
@@ -199,5 +201,107 @@ impl SsufidPlugin for SsuCatchPlugin {
         }
 
         Ok(all_posts)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_fetch_page_posts() {
+        let selectors = Selectors::new();
+
+        // 실제 API에 요청하여 1페이지 데이터 가져오기
+        let posts = SsuCatchPlugin
+            .fetch_page_posts(1, &selectors)
+            .await
+            .expect("Failed to fetch page posts");
+
+        assert!(!posts.is_empty(), "Posts should not be empty");
+
+        let first_post = &posts[0];
+
+        println!("First post: {:?}", first_post);
+
+        // 제목, 카테고리, ID, URL 등이 올바르게 추출되었는지 확인
+        assert!(!first_post.title.is_empty(), "Title should not be empty");
+        assert!(
+            !first_post.category.is_empty(),
+            "Category should not be empty"
+        );
+        assert!(!first_post.id.is_empty(), "ID should not be empty");
+        assert!(!first_post.url.is_empty(), "URL should not be empty");
+        assert!(
+            first_post.url.starts_with("https"),
+            "URL should start with https"
+        );
+
+        // 날짜 형식 검증
+        assert!(
+            first_post.created_at.year() >= 2025,
+            "Created date should be recent"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_fetch_post_content() {
+        let selectors = Selectors::new();
+
+        // 먼저 게시물 목록을 가져와서 첫 번째 게시물의 URL 사용
+        let posts = SsuCatchPlugin
+            .fetch_page_posts(1, &selectors)
+            .await
+            .expect("Failed to fetch page posts");
+
+        assert!(!posts.is_empty(), "Posts should not be empty");
+
+        let first_post_url = &posts[0].url;
+
+        // 실제 게시물 내용 가져오기
+        let content = SsuCatchPlugin
+            .fetch_post_content(first_post_url, &selectors)
+            .await
+            .expect("Failed to fetch post content");
+
+        println!(
+            "Content preview: {}",
+            &content[..std::cmp::min(content.len(), 200)]
+        );
+
+        // 내용이 비어있지 않은지 확인
+        assert!(!content.is_empty(), "Content should not be empty");
+
+        // 내용에 불필요한 공백 문자가 정리되었는지 확인
+        assert!(
+            !content.contains("\n\n"),
+            "Content should not contain consecutive newlines"
+        );
+        assert!(!content.contains("\t"), "Content should not contain tabs");
+        assert!(
+            !content.contains("\u{a0}"),
+            "Content should not contain non-breaking spaces"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_last_page_number() {
+        let selectors = Selectors::new();
+
+        // 실제 페이지 HTML 가져오기
+        let response =
+            reqwest::get("https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad")
+                .await
+                .expect("Failed to fetch HTML");
+
+        let html = response.text().await.expect("Failed to get HTML text");
+
+        // 마지막 페이지 번호 가져오기
+        let last_page = SsuCatchPlugin.get_last_page_number(&html, &selectors);
+
+        println!("Last page number: {}", last_page);
+
+        // 페이지 번호가 1 이상인지 확인
+        assert!(last_page >= 1, "Last page number should be at least 1");
     }
 }
