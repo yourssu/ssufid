@@ -15,6 +15,7 @@ struct Selectors {
     date: Selector,
     category_title: Selector,
     url: Selector,
+    content: Selector,
     last_page: Selector,
 }
 
@@ -27,6 +28,7 @@ impl Selectors {
             date: Selector::parse(".notice_col1 div").unwrap(),
             category_title: Selector::parse(".notice_col3 a span").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
+            content: Selector::parse("div.bg-white.p-4.mb-5 > div:not(.clearfix)").unwrap(),
             last_page: Selector::parse(".next-btn-last").unwrap(),
         }
     }
@@ -35,13 +37,28 @@ impl Selectors {
 impl SsuCatchPlugin {
     const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
 
-    async fn parse_posts_from_html(&self, html: &str, selectors: &Selectors) -> Vec<SsufidPost> {
-        let document = Html::parse_document(html);
+    async fn fetch_page_posts(
+        &self,
+        page: u32,
+        selectors: &Selectors,
+    ) -> Result<Vec<SsufidPost>, SsufidError> {
+        let page_url = format!("{}/page/{}", SsuCatchPlugin::BASE_URL, page);
+
+        let response = reqwest::get(page_url)
+            .await
+            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+
+        let html = response
+            .text()
+            .await
+            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+
+        let document = Html::parse_document(&html);
 
         let notice_list = document.select(&selectors.notice).next().unwrap();
 
         // 첫 번째 li 요소(헤더)는 건너뛰기 위해 skip(1)을 사용
-        notice_list
+        let posts = notice_list
             .select(&selectors.li)
             .skip(1)
             .map(|li| {
@@ -95,7 +112,43 @@ impl SsuCatchPlugin {
                     content: "".to_string(),
                 }
             })
-            .collect()
+            .collect();
+
+        Ok(posts)
+    }
+
+    async fn fetch_post_content(
+        &self,
+        post_url: &str,
+        selectors: &Selectors,
+    ) -> Result<String, SsufidError> {
+        let response = reqwest::get(post_url)
+            .await
+            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+
+        let html = response
+            .text()
+            .await
+            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+
+        let document = Html::parse_document(&html);
+
+        let raw_content = document
+            .select(&selectors.content)
+            .next()
+            .map(|div| div.text().collect::<String>())
+            .unwrap_or("".to_string());
+
+        let content = raw_content
+            // &nbsp 제거
+            .replace('\u{a0}', " ")
+            .lines()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<&str>>()
+            .join(" ");
+
+        Ok(content)
     }
 
     fn get_last_page_number(&self, html: &str, selectors: &Selectors) -> u32 {
@@ -131,18 +184,12 @@ impl SsufidPlugin for SsuCatchPlugin {
         let mut all_posts = Vec::new();
 
         for page in 1..=posts_limit {
-            let page_url = format!("{}/page/{}", SsuCatchPlugin::BASE_URL, page);
+            let mut posts = self.fetch_page_posts(page, &selectors).await?;
 
-            let response = reqwest::get(page_url)
-                .await
-                .map_err(|e| SsufidError::PluginError(e.to_string()))?;
-
-            let html = response
-                .text()
-                .await
-                .map_err(|e| SsufidError::PluginError(e.to_string()))?;
-
-            let posts = self.parse_posts_from_html(&html, &selectors).await;
+            for post in &mut posts {
+                let content = self.fetch_post_content(&post.url, &selectors).await?;
+                post.content = content;
+            }
 
             all_posts.extend(posts);
         }
