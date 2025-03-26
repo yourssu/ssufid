@@ -1,1 +1,1 @@
-pub mod ssu_catch_plugin;
+pub mod ssu_catch;

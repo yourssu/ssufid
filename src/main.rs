@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use ssufid::{core::SsufidCore, plugins::ssu_catch_plugin::SsuCatchPlugin};
+use ssufid::{core::SsufidCore, plugins::ssu_catch::SsuCatchPlugin};
 use tokio::io::AsyncWriteExt;
 
 #[tokio::main]
