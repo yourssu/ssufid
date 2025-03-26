@@ -35,6 +35,15 @@ impl Selectors {
     }
 }
 
+#[derive(Debug)]
+struct SsuCatchMetadata {
+    id: String,
+    title: String,
+    category: String,
+    url: String,
+    created_at: time::OffsetDateTime,
+}
+
 impl SsuCatchPlugin {
     const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
 
@@ -42,7 +51,7 @@ impl SsuCatchPlugin {
         &self,
         page: u32,
         selectors: &Selectors,
-    ) -> Result<Vec<SsufidPost>, SsufidError> {
+    ) -> Result<Vec<SsuCatchMetadata>, SsufidError> {
         let page_url = format!("{}/page/{}", Self::BASE_URL, page);
 
         let response = reqwest::get(page_url)
@@ -103,14 +112,12 @@ impl SsuCatchPlugin {
                 let category = spans[0].clone();
                 let title = spans[1].clone();
 
-                SsufidPost {
+                SsuCatchMetadata {
                     id,
                     title,
                     category,
                     url,
                     created_at: offset_datetime,
-                    updated_at: None,
-                    content: "".to_string(),
                 }
             })
             .collect();
@@ -186,14 +193,23 @@ impl SsufidPlugin for SsuCatchPlugin {
         let mut all_posts = Vec::new();
 
         for page in 1..=posts_limit {
-            let mut posts = self.fetch_page_posts(page, &selectors).await?;
+            let metadata_items = self.fetch_page_posts(page, &selectors).await?;
 
-            for post in &mut posts {
-                let content = self.fetch_post_content(&post.url, &selectors).await?;
-                post.content = content;
+            for metadata in metadata_items {
+                let content = self.fetch_post_content(&metadata.url, &selectors).await?;
+
+                let post = SsufidPost {
+                    id: metadata.id,
+                    title: metadata.title,
+                    category: metadata.category,
+                    url: metadata.url,
+                    created_at: metadata.created_at,
+                    updated_at: None,
+                    content,
+                };
+
+                all_posts.push(post);
             }
-
-            all_posts.extend(posts);
         }
 
         for post in &all_posts {
@@ -266,7 +282,7 @@ mod tests {
 
         println!(
             "Content preview: {}",
-            &content[..std::cmp::min(content.len(), 200)]
+            content.chars().take(200).collect::<String>()
         );
 
         // 내용이 비어있지 않은지 확인
