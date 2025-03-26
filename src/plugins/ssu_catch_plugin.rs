@@ -176,7 +176,7 @@ impl SsuCatchPlugin {
 }
 
 impl SsufidPlugin for SsuCatchPlugin {
-    const IDENTIFIER: &'static str = "ssu_catch";
+    const IDENTIFIER: &'static str = "scatch.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
 
