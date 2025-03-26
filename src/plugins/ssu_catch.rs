@@ -43,7 +43,7 @@ impl SsuCatchPlugin {
         page: u32,
         selectors: &Selectors,
     ) -> Result<Vec<SsufidPost>, SsufidError> {
-        let page_url = format!("{}/page/{}", SsuCatchPlugin::BASE_URL, page);
+        let page_url = format!("{}/page/{}", Self::BASE_URL, page);
 
         let response = reqwest::get(page_url)
             .await
