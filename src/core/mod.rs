@@ -197,19 +197,21 @@ mod tests {
             },
         ];
 
-        // write mock data
+        // write file
         let mock_json = serde_json::to_string_pretty(&mock).unwrap();
         let dir = std::path::Path::new("./.ssufid/cache_test");
+        let test_file_path = dir.join("test.json");
         tokio::fs::create_dir_all(dir).await.unwrap();
-        let mut test_file = tokio::fs::File::create(dir.join("test.json"))
-            .await
-            .unwrap();
+        let mut test_file = tokio::fs::File::create(&test_file_path).await.unwrap();
         test_file.write_all(mock_json.as_bytes()).await.unwrap();
 
-        // read data and compare
+        // read file
         let core = SsufidCore::new("./.ssufid/cache_test");
         let read_data = core.read_cache("test").await.unwrap();
         assert_eq!(mock, read_data);
+
+        // delete test file
+        tokio::fs::remove_file(&test_file_path).await.unwrap();
     }
 
     #[tokio::test]
