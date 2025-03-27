@@ -104,7 +104,8 @@ impl SsufidCore {
         let path = std::path::Path::new(&self.cache_dir).join(format!("{id}.json"));
         let content = match tokio::fs::read_to_string(&path).await {
             Ok(content) => content,
-            Err(_) => return Ok(vec![]),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+            Err(e) => return Err(SsufidError::FileIOError(e)),
         };
         let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
