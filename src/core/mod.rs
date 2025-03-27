@@ -47,6 +47,8 @@ pub struct SsufidCore {
 }
 
 impl SsufidCore {
+    pub const POST_COUNT_LIMIT: u32 = 100;
+
     pub fn new(cache_dir: &str) -> Self {
         Self {
             cache: Arc::new(RwLock::new(HashMap::new())),
@@ -145,6 +147,7 @@ fn inject_update_date(
 }
 
 pub trait SsufidPlugin {
+    const POST_COUNT_LIMIT: u32 = 100;
     const TITLE: &'static str;
     const IDENTIFIER: &'static str;
     const DESCRIPTION: &'static str;

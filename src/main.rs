@@ -7,8 +7,9 @@ use tokio::io::AsyncWriteExt;
 async fn main() -> eyre::Result<()> {
     let core = SsufidCore::new("./.ssufid/cache");
 
-    // TODO: 100이라는 값을 따로 상수로 관리할지?
-    let site = core.run(ExamplePlugin, 100).await?;
+    let site = core
+        .run(ExamplePlugin, SsufidCore::POST_COUNT_LIMIT)
+        .await?;
 
     let out_dir = Path::new("./out/example");
     tokio::fs::create_dir_all(out_dir).await?;
