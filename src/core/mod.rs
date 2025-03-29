@@ -8,13 +8,13 @@ use tokio::sync::RwLock;
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
-    id: String,
-    title: String,
-    category: String,
-    url: String,
-    created_at: time::OffsetDateTime,
-    updated_at: Option<time::OffsetDateTime>,
-    content: String,
+    pub id: String,
+    pub title: String,
+    pub category: String,
+    pub url: String,
+    pub created_at: time::OffsetDateTime,
+    pub updated_at: Option<time::OffsetDateTime>,
+    pub content: String,
 }
 
 impl SsufidPost {
@@ -159,8 +159,8 @@ pub trait SsufidPlugin {
 
 #[derive(Debug, Error)]
 pub enum SsufidError {
-    #[error("Crawl error: {0}")]
-    CrawlError(String),
+    #[error("Plugin error: {0}")]
+    PluginError(String),
 
     #[error("File I/O error: {0}")]
     FileIOError(#[from] std::io::Error),
