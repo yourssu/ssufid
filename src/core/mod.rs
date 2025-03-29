@@ -47,7 +47,7 @@ pub struct SsufidCore {
 }
 
 impl SsufidCore {
-    const POST_COUNT_LIMIT: u32 = 100;
+    pub const POST_COUNT_LIMIT: u32 = 100;
 
     pub fn new(cache_dir: &str) -> Self {
         Self {
@@ -56,8 +56,12 @@ impl SsufidCore {
         }
     }
 
-    pub async fn run<T: SsufidPlugin>(&self, plugin: T) -> Result<SsufidSiteData, SsufidError> {
-        let new_entries = plugin.crawl(Self::POST_COUNT_LIMIT).await?;
+    pub async fn run<T: SsufidPlugin>(
+        &self,
+        plugin: T,
+        posts_limit: u32,
+    ) -> Result<SsufidSiteData, SsufidError> {
+        let new_entries = plugin.crawl(posts_limit).await?;
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -100,7 +104,11 @@ impl SsufidCore {
 
     async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
         let path = std::path::Path::new(&self.cache_dir).join(format!("{id}.json"));
-        let content = tokio::fs::read_to_string(&path).await?;
+        let content = match tokio::fs::read_to_string(&path).await {
+            Ok(content) => content,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
+            Err(e) => return Err(SsufidError::FileIOError(e)),
+        };
         let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
     }
@@ -164,46 +172,55 @@ pub enum SsufidError {
 // 임시 테스트
 #[cfg(test)]
 mod tests {
+    use super::{SsufidCore, SsufidPost};
+    use time::macros::datetime;
     use tokio::io::AsyncWriteExt;
 
-    use super::{SsufidCore, SsufidPost};
-
     #[tokio::test]
-    async fn core_read_cache_test() {
+    async fn test_read_cache() {
         let mock = vec![
             SsufidPost {
-                id: "asdf".to_string(),
-                title: "asdf".to_string(),
-                category: "asdf".to_string(),
-                url: "asdf".to_string(),
-                created_at: time::OffsetDateTime::now_utc(),
+                id: "test-id".to_string(),
+                title: "Test Title".to_string(),
+                category: "Test Category".to_string(),
+                url: "https://example.com/test".to_string(),
+                created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: None,
-                content: "asdf".to_string(),
+                content: "Test Content".to_string(),
             },
             SsufidPost {
-                id: "asdf".to_string(),
-                title: "asdf".to_string(),
-                category: "asdf".to_string(),
-                url: "asdf".to_string(),
-                created_at: time::OffsetDateTime::now_utc(),
-                updated_at: Some(time::OffsetDateTime::now_utc()),
-                content: "asdf".to_string(),
+                id: "test-id".to_string(),
+                title: "Test Title".to_string(),
+                category: "Test Category".to_string(),
+                url: "https://example.com/test".to_string(),
+                created_at: datetime!(2024-03-22 12:00:00 UTC),
+                updated_at: Some(datetime!(2024-03-22 12:00:00 UTC)),
+                content: "Test Content".to_string(),
             },
         ];
 
-        // write mock data
-        let test_data_str = serde_json::to_string_pretty(&mock).unwrap();
+        // write file
+        let mock_json = serde_json::to_string_pretty(&mock).unwrap();
         let dir = std::path::Path::new("./.ssufid/cache_test");
+        let test_file_path = dir.join("test.json");
         tokio::fs::create_dir_all(dir).await.unwrap();
-        let mut test_file = tokio::fs::File::create(dir.join("test.json"))
-            .await
-            .unwrap();
-        test_file.write_all(test_data_str.as_bytes()).await.unwrap();
+        let mut test_file = tokio::fs::File::create(&test_file_path).await.unwrap();
+        test_file.write_all(mock_json.as_bytes()).await.unwrap();
 
-        // read data and compare
+        // read file
         let core = SsufidCore::new("./.ssufid/cache_test");
         let read_data = core.read_cache("test").await.unwrap();
         assert_eq!(mock, read_data);
+
+        // delete test file
+        tokio::fs::remove_file(&test_file_path).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_read_cache_file_not_found() {
+        let core = SsufidCore::new("./.ssufid/unknown");
+        let read_data = core.read_cache("not_found").await.unwrap();
+        assert!(read_data == vec![]);
     }
 }
 

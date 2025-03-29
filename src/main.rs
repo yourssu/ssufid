@@ -7,7 +7,9 @@ use tokio::io::AsyncWriteExt;
 async fn main() -> eyre::Result<()> {
     let core = SsufidCore::new("./.ssufid/cache");
 
-    let site = core.run(SsuCatchPlugin).await?;
+    let site = core
+        .run(SsuCatchPlugin, SsufidCore::POST_COUNT_LIMIT)
+        .await?;
 
     let out_dir = Path::new("./out/example");
     tokio::fs::create_dir_all(out_dir).await?;
