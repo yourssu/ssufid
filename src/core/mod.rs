@@ -12,7 +12,9 @@ pub struct SsufidPost {
     pub title: String,
     pub category: String,
     pub url: String,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<time::OffsetDateTime>,
     pub content: String,
 }
