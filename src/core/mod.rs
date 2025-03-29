@@ -12,7 +12,9 @@ pub struct SsufidPost {
     pub title: String,
     pub category: String,
     pub url: String,
+    #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<time::OffsetDateTime>,
     pub content: String,
 }
@@ -172,9 +174,11 @@ pub enum SsufidError {
 // 임시 테스트
 #[cfg(test)]
 mod tests {
-    use super::{SsufidCore, SsufidPost};
+    use time::OffsetDateTime;
     use time::macros::datetime;
     use tokio::io::AsyncWriteExt;
+
+    use super::{SsufidCore, SsufidPost, inject_update_date};
 
     #[tokio::test]
     async fn test_read_cache() {
@@ -221,6 +225,92 @@ mod tests {
         let core = SsufidCore::new("./.ssufid/unknown");
         let read_data = core.read_cache("not_found").await.unwrap();
         assert!(read_data == vec![]);
+    }
+
+    #[test]
+    fn test_inject_update_date() {
+        let now = OffsetDateTime::now_utc();
+        let old_entries = vec![
+            SsufidPost {
+                id: "1".to_string(),
+                title: "Old Title 1".to_string(),
+                category: "Category 1".to_string(),
+                url: "http://example.com/1".to_string(),
+                created_at: now,
+                updated_at: None,
+                content: "Old Content 1".to_string(),
+            },
+            SsufidPost {
+                id: "2".to_string(),
+                title: "Old Title 2".to_string(),
+                category: "Category 2".to_string(),
+                url: "http://example.com/2".to_string(),
+                created_at: now,
+                updated_at: Some(now),
+                content: "Old Content 2".to_string(),
+            },
+        ];
+
+        let new_entries = vec![
+            // Case 1: 기존 포스트와 내용이 같은 경우
+            SsufidPost {
+                id: "1".to_string(),
+                title: "Old Title 1".to_string(),
+                category: "Category 1".to_string(),
+                url: "http://example.com/1".to_string(),
+                created_at: now,
+                updated_at: None,
+                content: "Old Content 1".to_string(),
+            },
+            // Case 2: 기존 포스트와 내용이 다른 경우
+            SsufidPost {
+                id: "2".to_string(),
+                title: "Updated Title 2".to_string(), // 제목 변경
+                category: "Category 2".to_string(),
+                url: "http://example.com/2".to_string(),
+                created_at: now,
+                updated_at: None,
+                content: "Old Content 2".to_string(),
+            },
+            // Case 3: 새로운 포스트인 경우
+            SsufidPost {
+                id: "3".to_string(),
+                title: "New Title 3".to_string(),
+                category: "Category 3".to_string(),
+                url: "http://example.com/3".to_string(),
+                created_at: now,
+                updated_at: None,
+                content: "New Content 3".to_string(),
+            },
+            // Case 4: 이미 updated_at이 설정된 경우
+            SsufidPost {
+                id: "4".to_string(),
+                title: "Title 4".to_string(),
+                category: "Category 4".to_string(),
+                url: "http://example.com/4".to_string(),
+                created_at: now,
+                updated_at: Some(now),
+                content: "Content 4".to_string(),
+            },
+        ];
+
+        let result = inject_update_date(&old_entries, new_entries);
+
+        // Case 1: 내용이 같은 경우 updated_at이 None이어야 함
+        assert!(result[0].updated_at.is_none());
+        assert_eq!(result[0].title, "Old Title 1");
+
+        // Case 2: 내용이 다른 경우 updated_at이 설정되어야 함
+        assert!(result[1].updated_at.is_some());
+        assert_eq!(result[1].title, "Updated Title 2");
+
+        // Case 3: 새로운 포스트는 updated_at이 None이어야 함
+        assert!(result[2].updated_at.is_none());
+        assert_eq!(result[2].title, "New Title 3");
+
+        // Case 4: 이미 updated_at이 설정된 경우 그대로 유지되어야 함
+        assert_eq!(result[3].updated_at, Some(now));
+        assert_eq!(result[3].title, "Title 4");
     }
 }
 
