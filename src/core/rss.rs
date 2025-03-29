@@ -1,11 +1,17 @@
-use rss::{ChannelBuilder, ItemBuilder};
+use std::collections::BTreeMap;
+
+use rss::{
+    ChannelBuilder, ItemBuilder,
+    extension::{Extension, ExtensionBuilder},
+};
 use time::format_description::well_known::Rfc2822;
 
 use super::{SsufidPost, SsufidSiteData};
 
 impl From<SsufidPost> for rss::Item {
     fn from(post: SsufidPost) -> Self {
-        ItemBuilder::default()
+        let mut builder = ItemBuilder::default();
+        builder
             .title(post.title)
             .link(post.url)
             .pub_date(post.created_at.format(&Rfc2822).unwrap())
@@ -13,8 +19,21 @@ impl From<SsufidPost> for rss::Item {
                 value: post.id,
                 permalink: false,
             })
-            .content(post.content)
-            .build()
+            .content(post.content);
+
+        if let Some(updated_at) = post.updated_at {
+            let extension = ExtensionBuilder::default()
+                .name("atom:updated")
+                .value(updated_at.format(&Rfc2822).unwrap())
+                .build();
+            builder.extension((
+                "http://www.w3.org/2005/Atom".into(),
+                [("atom:updated".to_string(), vec![extension])]
+                    .into_iter()
+                    .collect::<BTreeMap<String, Vec<Extension>>>(),
+            ));
+        }
+        builder.build()
     }
 }
 
@@ -48,7 +67,7 @@ mod tests {
             category: "Test Category".to_string(),
             url: "https://example.com/test".to_string(),
             created_at: datetime!(2024-03-22 12:00:00 UTC),
-            updated_at: None,
+            updated_at: Some(datetime!(2024-03-27 12:00:00 UTC)),
             content: "Test Content".to_string(),
         };
 
@@ -59,6 +78,15 @@ mod tests {
         assert_eq!(rss_item.pub_date(), Some("Fri, 22 Mar 2024 12:00:00 +0000"));
         assert_eq!(rss_item.guid().unwrap().value(), "test-id");
         assert!(!rss_item.guid().unwrap().is_permalink());
+        assert_eq!(
+            rss_item
+                .extensions()
+                .get("http://www.w3.org/2005/Atom")
+                .and_then(|m| m.get("atom:updated"))
+                .and_then(|v| v.first())
+                .and_then(|e| e.value()),
+            Some("Wed, 27 Mar 2024 12:00:00 +0000")
+        );
         assert_eq!(rss_item.content(), Some("Test Content"));
     }
 
