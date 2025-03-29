@@ -147,7 +147,6 @@ fn inject_update_date(
 }
 
 pub trait SsufidPlugin {
-    const POST_COUNT_LIMIT: u32 = 100;
     const TITLE: &'static str;
     const IDENTIFIER: &'static str;
     const DESCRIPTION: &'static str;
