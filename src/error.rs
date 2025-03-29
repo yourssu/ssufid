@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use crate::core::SsufidPlugin;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("File I/O error: {0}")]
@@ -22,39 +24,52 @@ impl From<PluginError> for Error {
 #[error("Error from plugin {plugin}: {kind:?} - {message}")]
 pub struct PluginError {
     kind: PluginErrorKind,
-    plugin: String,
+    plugin: &'static str,
     message: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PluginErrorKind {
     Request,
     Parse,
-    Custom,
+    Custom(Box<str>),
+    Unknown,
 }
 
 impl PluginError {
-    pub fn request(plugin: &str, message: String) -> Self {
+    pub fn request<T: SsufidPlugin>(message: String) -> Self {
         Self {
             kind: PluginErrorKind::Request,
-            plugin: plugin.to_string(),
+            plugin: T::IDENTIFIER,
             message,
         }
     }
 
-    pub fn parse(plugin: &str, message: String) -> Self {
+    pub fn parse<T: SsufidPlugin>(message: String) -> Self {
         Self {
             kind: PluginErrorKind::Parse,
-            plugin: plugin.to_string(),
+            plugin: T::IDENTIFIER,
             message,
         }
     }
 
-    pub fn custom(plugin: &str, message: String) -> Self {
+    pub fn custom<T: SsufidPlugin>(name: String, message: String) -> Self {
         Self {
-            kind: PluginErrorKind::Custom,
-            plugin: plugin.to_string(),
+            kind: PluginErrorKind::Custom(name.into()),
+            plugin: T::IDENTIFIER,
             message,
         }
+    }
+
+    pub fn kind(&self) -> &PluginErrorKind {
+        &self.kind
+    }
+
+    pub fn plugin(&self) -> &str {
+        self.plugin
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
     }
 }

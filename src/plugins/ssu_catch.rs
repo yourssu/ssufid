@@ -59,12 +59,12 @@ impl SsuCatchPlugin {
 
         let response = reqwest::get(page_url)
             .await
-            .map_err(|e| PluginError::request(Self::IDENTIFIER, e.to_string()))?;
+            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
 
         let html = response
             .text()
             .await
-            .map_err(|e| PluginError::parse(Self::IDENTIFIER, e.to_string()))?;
+            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
@@ -135,12 +135,12 @@ impl SsuCatchPlugin {
     ) -> Result<String, PluginError> {
         let response = reqwest::get(post_url)
             .await
-            .map_err(|e| PluginError::request(Self::IDENTIFIER, e.to_string()))?;
+            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
 
         let html = response
             .text()
             .await
-            .map_err(|e| PluginError::parse(Self::IDENTIFIER, e.to_string()))?;
+            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
