@@ -3,7 +3,10 @@ use std::borrow::Cow;
 use scraper::{Html, Selector};
 use url::Url;
 
-use crate::core::{SsufidError, SsufidPlugin, SsufidPost};
+use crate::{
+    core::{SsufidPlugin, SsufidPost},
+    error::PluginError,
+};
 use time::{Date, format_description, macros::offset};
 
 pub struct SsuCatchPlugin;
@@ -51,17 +54,17 @@ impl SsuCatchPlugin {
         &self,
         page: u32,
         selectors: &Selectors,
-    ) -> Result<Vec<SsuCatchMetadata>, SsufidError> {
+    ) -> Result<Vec<SsuCatchMetadata>, PluginError> {
         let page_url = format!("{}/page/{}", Self::BASE_URL, page);
 
         let response = reqwest::get(page_url)
             .await
-            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+            .map_err(|e| PluginError::request(Self::IDENTIFIER, e.to_string()))?;
 
         let html = response
             .text()
             .await
-            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+            .map_err(|e| PluginError::parse(Self::IDENTIFIER, e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
@@ -129,15 +132,15 @@ impl SsuCatchPlugin {
         &self,
         post_url: &str,
         selectors: &Selectors,
-    ) -> Result<String, SsufidError> {
+    ) -> Result<String, PluginError> {
         let response = reqwest::get(post_url)
             .await
-            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+            .map_err(|e| PluginError::request(Self::IDENTIFIER, e.to_string()))?;
 
         let html = response
             .text()
             .await
-            .map_err(|e| SsufidError::PluginError(e.to_string()))?;
+            .map_err(|e| PluginError::parse(Self::IDENTIFIER, e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
@@ -187,7 +190,7 @@ impl SsufidPlugin for SsuCatchPlugin {
     const TITLE: &'static str = "숭실대학교 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
 
-    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, SsufidError> {
+    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let selectors = Selectors::new();
 
         let mut all_posts = Vec::new();

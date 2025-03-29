@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use time;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+
+use crate::error::{Error, PluginError};
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
@@ -62,7 +63,7 @@ impl SsufidCore {
         &self,
         plugin: T,
         posts_limit: u32,
-    ) -> Result<SsufidSiteData, SsufidError> {
+    ) -> Result<SsufidSiteData, Error> {
         let new_entries = plugin.crawl(posts_limit).await?;
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
@@ -89,7 +90,7 @@ impl SsufidCore {
         })
     }
 
-    pub async fn save_cache(&self) -> Result<(), SsufidError> {
+    pub async fn save_cache(&self) -> Result<(), Error> {
         // Save all caches into files
         let cache = Arc::clone(&self.cache);
         let cache = cache.read().await;
@@ -104,12 +105,12 @@ impl SsufidCore {
         Ok(())
     }
 
-    async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, SsufidError> {
+    async fn read_cache(&self, id: &str) -> Result<Vec<SsufidPost>, Error> {
         let path = std::path::Path::new(&self.cache_dir).join(format!("{id}.json"));
         let content = match tokio::fs::read_to_string(&path).await {
             Ok(content) => content,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),
-            Err(e) => return Err(SsufidError::FileIOError(e)),
+            Err(e) => return Err(Error::Io(e)),
         };
         let items: Vec<SsufidPost> = serde_json::from_str(&content)?;
         Ok(items)
@@ -156,19 +157,7 @@ pub trait SsufidPlugin {
     fn crawl(
         &self,
         posts_limit: u32,
-    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, SsufidError>> + Send;
-}
-
-#[derive(Debug, Error)]
-pub enum SsufidError {
-    #[error("Plugin error: {0}")]
-    PluginError(String),
-
-    #[error("File I/O error: {0}")]
-    FileIOError(#[from] std::io::Error),
-
-    #[error("Serialization error: {0}")]
-    SerializationError(#[from] serde_json::Error),
+    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, PluginError>> + Send;
 }
 
 // 임시 테스트
