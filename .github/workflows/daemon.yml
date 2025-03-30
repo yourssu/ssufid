@@ -1,0 +1,36 @@
+name: Crawl & Deploy
+
+on:
+  workflow_dispatch:
+
+  # 테스트용
+  pull_request:
+    branches: [ "main" ]
+  
+  schedule:
+    # this workflow triggers every day at 20:30 UTC (05:30 KST)
+    - cron: "30 20 * * *"
+jobs:
+  daemon:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: daemon
+      cancel-in-progress: true
+    steps:
+      # TODO: load .ssufid/cache dir
+
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@nightly
+      - name: Retrieve cargo cache
+        uses: Leafwing-Studios/cargo-cache@v2
+      - name: Cargo run
+        run: cargo run
+      
+      - name: Checkout to ssufid-sites repository
+        uses: actions/checkout@v4
+        with:
+          path: ssufid-sites
+          repository: yoursu/ssufid-sites
+          ref: main
+      - run: ls && tree .
