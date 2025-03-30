@@ -26,6 +26,7 @@ jobs:
           repository: yourssu/ssufid-sites
           ref: main
           sparse-checkout: .cache/
+      - run: ls -al && tree -I target
       - name: Copy ssufid cache
         run: |
           mkdir -p .ssufid/cache/ && cp -r ssufid-sites/.cache/* .ssufid/cache/
