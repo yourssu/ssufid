@@ -36,8 +36,10 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
       - name: Retrieve cargo cache
         uses: Leafwing-Studios/cargo-cache@v2
+      - run: ls -al && tree -I target
       - name: Cargo run
         run: cargo run
+      - run: ls -al && tree -I target
       
       - name: Clone to ssufid-sites repository
         uses: actions/checkout@v4
@@ -49,7 +51,7 @@ jobs:
       - name: Copy data and cache files
         run: |
           cp -r out/* ssufid-sites/
-          cp -r .cache/* ssufid-sites/.cache/
+          mkdir -p ssufid-sites/.cache/ && cp -r .cache/* ssufid-sites/.cache/
       - name: Push changes
         run: |
           cd ssufid-sites
