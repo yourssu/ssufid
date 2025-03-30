@@ -27,10 +27,21 @@ jobs:
       - name: Cargo run
         run: cargo run
       
-      - name: Checkout to ssufid-sites repository
+      - name: Clone to ssufid-sites repository
         uses: actions/checkout@v4
         with:
           path: ssufid-sites
           repository: yourssu/ssufid-sites
           ref: main
-      - run: ls && tree .
+      - name: Copy data and cache files
+        run: |
+          cp -r out/* ssufid-sites/
+          mkdir -p ssufid-sites/.cache/ && cp -r .ssufid/cache/* ssufid-sites/.cache/
+      - name: Push changes
+        run: |
+          cd ssufid-sites
+          git config user.name "GitHub Actions"
+          git config user.email ""
+          git add .
+          git commit -m "$(date +'%Y-%m-%d')"
+          git push
