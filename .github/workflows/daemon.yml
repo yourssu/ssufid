@@ -29,7 +29,9 @@ jobs:
       - run: ls -al && tree -I target
       - name: Copy ssufid cache
         run: |
-          mkdir -p .ssufid/cache/ && cp -r ssufid-sites/.cache/* .ssufid/cache/
+          mkdir -p .ssufid/cache/
+          mkdir -p ssufid-sites/.cache/
+          cp -r ssufid-sites/.cache/* .ssufid/cache/
       - run: ls -al && tree -I target
 
       - uses: actions/checkout@v4
