@@ -11,7 +11,7 @@ use tokio::io::AsyncWriteExt;
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
 
-    let core = Arc::new(SsufidCore::new("./.ssufid/cache"));
+    let core = Arc::new(SsufidCore::new("./.cache"));
 
     let out_dir = Path::new("./out");
 
