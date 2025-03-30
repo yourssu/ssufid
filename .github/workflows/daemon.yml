@@ -19,7 +19,17 @@ jobs:
       group: daemon
       cancel-in-progress: true
     steps:
-      # TODO: load .ssufid/cache dir
+      - name: Load ssufid cache
+        uses: actions/checkout@v4
+        with:
+          path: ssufid-sites
+          repository: yourssu/ssufid-sites
+          ref: main
+          sparse-checkout: .cache/
+      - name: Copy ssufid cache
+        run: |
+          mkdir -p .ssufid/cache/ && cp -r ssufid-sites/.cache/* .ssufid/cache/
+      - run: ls -al && tree -I target
 
       - uses: actions/checkout@v4
       - name: Setup Rust
