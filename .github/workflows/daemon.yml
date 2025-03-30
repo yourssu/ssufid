@@ -31,6 +31,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ssufid-sites
-          repository: yoursu/ssufid-sites
+          repository: yourssu/ssufid-sites
           ref: main
       - run: ls && tree .
