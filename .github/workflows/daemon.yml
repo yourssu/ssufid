@@ -33,6 +33,7 @@ jobs:
           path: ssufid-sites
           repository: yourssu/ssufid-sites
           ref: main
+          token: ${{ secrets.SSUFID_SITES_GITHUB_TOKEN }}
       - name: Copy data and cache files
         run: |
           cp -r out/* ssufid-sites/
