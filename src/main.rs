@@ -15,7 +15,7 @@ async fn main() -> eyre::Result<()> {
 
     let out_dir = Path::new("./out");
 
-    let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin)];
+    let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin::default())];
 
     join_all(tasks).await.into_iter().for_each(|result| {
         if let Err(err) = result {
