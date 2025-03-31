@@ -33,17 +33,20 @@ jobs:
           ref: main
           token: ${{ secrets.SSUFID_SITES_GITHUB_TOKEN }}
 
-      - run: ls -al && tree -I target
+      - run: ls -al && tree -a -I target
+
       - name: Copy ssufid cache to .cache dir
         run: |
           mkdir -p ssufid-sites/.cache/
           cp -r ssufid-sites/.cache/ .
 
-      - run: ls -al && tree -I target
+      - run: ls -al && tree -a -I target
+
       - name: Cargo run
         run: cargo run
 
-      - run: ls -al && tree -I target
+      - run: ls -al && tree -a -I target
+
       - name: Update data and cache files
         run: |
           cp -r out/* ssufid-sites/
@@ -55,3 +58,4 @@ jobs:
           git config user.email ""
           git add .
           git commit -m "$(date +'%Y-%m-%d')"
+          git push
