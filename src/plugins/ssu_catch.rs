@@ -8,9 +8,6 @@ use crate::{
     error::PluginError,
 };
 use time::{Date, format_description, macros::offset};
-
-pub struct SsuCatchPlugin;
-
 struct Selectors {
     notice: Selector,
     li: Selector,
@@ -21,6 +18,10 @@ struct Selectors {
     content: Selector,
     #[allow(dead_code)]
     last_page: Selector,
+}
+
+pub struct SsuCatchPlugin {
+    selectors: Selectors,
 }
 
 impl Selectors {
@@ -47,14 +48,22 @@ struct SsuCatchMetadata {
     created_at: time::OffsetDateTime,
 }
 
+impl Default for SsuCatchPlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SsuCatchPlugin {
     const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
 
-    async fn fetch_page_posts(
-        &self,
-        page: u32,
-        selectors: &Selectors,
-    ) -> Result<Vec<SsuCatchMetadata>, PluginError> {
+    pub fn new() -> Self {
+        Self {
+            selectors: Selectors::new(),
+        }
+    }
+
+    async fn fetch_page_posts(&self, page: u32) -> Result<Vec<SsuCatchMetadata>, PluginError> {
         let page_url = format!("{}/page/{}", Self::BASE_URL, page);
 
         let response = reqwest::get(page_url)
@@ -68,16 +77,16 @@ impl SsuCatchPlugin {
 
         let document = Html::parse_document(&html);
 
-        let notice_list = document.select(&selectors.notice).next().unwrap();
+        let notice_list = document.select(&self.selectors.notice).next().unwrap();
 
         // 첫 번째 li 요소(헤더)는 건너뛰기 위해 skip(1)을 사용
         let posts = notice_list
-            .select(&selectors.li)
+            .select(&self.selectors.li)
             .skip(1)
             .map(|li| {
                 let date_format = format_description::parse("[year].[month].[day]").unwrap();
                 let date_string = li
-                    .select(&selectors.date)
+                    .select(&self.selectors.date)
                     .next()
                     .unwrap()
                     .text()
@@ -86,7 +95,7 @@ impl SsuCatchPlugin {
                 let offset_datetime = date.midnight().assume_offset(offset!(+09:00));
 
                 let url = li
-                    .select(&selectors.url)
+                    .select(&self.selectors.url)
                     .next()
                     .unwrap()
                     .value()
@@ -105,10 +114,10 @@ impl SsuCatchPlugin {
                     .unwrap_or(Cow::Borrowed(""))
                     .to_string();
 
-                let category_title_span = li.select(&selectors.category_title).next().unwrap();
+                let category_title_span = li.select(&self.selectors.category_title).next().unwrap();
 
                 let spans = category_title_span
-                    .select(&selectors.span)
+                    .select(&self.selectors.span)
                     .map(|span| span.text().collect::<String>())
                     .collect::<Vec<String>>();
 
@@ -128,11 +137,7 @@ impl SsuCatchPlugin {
         Ok(posts)
     }
 
-    async fn fetch_post_content(
-        &self,
-        post_url: &str,
-        selectors: &Selectors,
-    ) -> Result<String, PluginError> {
+    async fn fetch_post_content(&self, post_url: &str) -> Result<String, PluginError> {
         let response = reqwest::get(post_url)
             .await
             .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
@@ -145,7 +150,7 @@ impl SsuCatchPlugin {
         let document = Html::parse_document(&html);
 
         let raw_content = document
-            .select(&selectors.content)
+            .select(&self.selectors.content)
             .next()
             .map(|div| div.text().collect::<String>())
             .unwrap_or("".to_string());
@@ -163,11 +168,11 @@ impl SsuCatchPlugin {
     }
 
     #[allow(dead_code)]
-    fn get_last_page_number(&self, html: &str, selectors: &Selectors) -> u32 {
+    fn get_last_page_number(&self, html: &str) -> u32 {
         let document = Html::parse_document(html);
 
         let last_page_url = document
-            .select(&selectors.last_page)
+            .select(&self.selectors.last_page)
             .next()
             .unwrap()
             .value()
@@ -191,15 +196,13 @@ impl SsufidPlugin for SsuCatchPlugin {
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        let selectors = Selectors::new();
-
         let mut all_posts = Vec::new();
 
         for page in 1..=posts_limit {
-            let metadata_items = self.fetch_page_posts(page, &selectors).await?;
+            let metadata_items = self.fetch_page_posts(page).await?;
 
             for metadata in metadata_items {
-                let content = self.fetch_post_content(&metadata.url, &selectors).await?;
+                let content = self.fetch_post_content(&metadata.url).await?;
 
                 let post = SsufidPost {
                     id: metadata.id,
@@ -229,11 +232,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_page_posts() {
-        let selectors = Selectors::new();
+        let ssu_catch_plugin = SsuCatchPlugin::default();
 
         // 실제 API에 요청하여 1페이지 데이터 가져오기
-        let posts = SsuCatchPlugin
-            .fetch_page_posts(1, &selectors)
+        let posts = ssu_catch_plugin
+            .fetch_page_posts(1)
             .await
             .expect("Failed to fetch page posts");
 
@@ -265,11 +268,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_post_content() {
-        let selectors = Selectors::new();
+        let ssu_catch_plugin = SsuCatchPlugin::default();
 
         // 먼저 게시물 목록을 가져와서 첫 번째 게시물의 URL 사용
-        let posts = SsuCatchPlugin
-            .fetch_page_posts(1, &selectors)
+        let posts = ssu_catch_plugin
+            .fetch_page_posts(1)
             .await
             .expect("Failed to fetch page posts");
 
@@ -278,8 +281,8 @@ mod tests {
         let first_post_url = &posts[0].url;
 
         // 실제 게시물 내용 가져오기
-        let content = SsuCatchPlugin
-            .fetch_post_content(first_post_url, &selectors)
+        let content = ssu_catch_plugin
+            .fetch_post_content(first_post_url)
             .await
             .expect("Failed to fetch post content");
 
@@ -305,7 +308,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_last_page_number() {
-        let selectors = Selectors::new();
+        let ssu_catch_plugin = SsuCatchPlugin::default();
 
         // 실제 페이지 HTML 가져오기
         let response =
@@ -316,7 +319,7 @@ mod tests {
         let html = response.text().await.expect("Failed to get HTML text");
 
         // 마지막 페이지 번호 가져오기
-        let last_page = SsuCatchPlugin.get_last_page_number(&html, &selectors);
+        let last_page = ssu_catch_plugin.get_last_page_number(&html);
 
         println!("Last page number: {}", last_page);
 
