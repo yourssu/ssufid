@@ -95,12 +95,12 @@ impl SsufidCore {
         let cache = Arc::clone(&self.cache);
         let cache = cache.read().await;
         let dir = std::path::Path::new(&self.cache_dir);
-        tokio::fs::create_dir_all(dir).await.unwrap();
+        tokio::fs::create_dir_all(dir).await?;
 
         for (id, posts) in &*cache {
-            let json = serde_json::to_string_pretty(&posts).unwrap();
+            let json = serde_json::to_string_pretty(&posts)?;
             let mut file = tokio::fs::File::create(dir.join(format!("{id}.json"))).await?;
-            file.write_all(json.as_bytes()).await.unwrap();
+            file.write_all(json.as_bytes()).await?;
         }
         Ok(())
     }
