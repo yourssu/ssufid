@@ -56,6 +56,7 @@ impl Default for SsuCatchPlugin {
 
 impl SsuCatchPlugin {
     const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
+    const POSTS_PER_PAGE: u32 = 15; // 페이지당 게시글 수
 
     pub fn new() -> Self {
         Self {
@@ -196,38 +197,53 @@ impl SsufidPlugin for SsuCatchPlugin {
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        let mut all_posts = Vec::new();
-        let mut page = 1;
+        let pages = posts_limit / Self::POSTS_PER_PAGE + 1;
+        let mut page_futures = Vec::new();
 
-        while all_posts.len() < posts_limit as usize {
-            let metadata_items = self.fetch_page_posts(page).await?;
-
-            for metadata in metadata_items {
-                // posts_limit에 도달했는지 확인
-                if all_posts.len() >= posts_limit as usize {
-                    break;
-                }
-
-                let content = self.fetch_post_content(&metadata.url).await?;
-
-                let post = SsufidPost {
-                    id: metadata.id,
-                    title: metadata.title,
-                    category: metadata.category,
-                    url: metadata.url,
-                    created_at: metadata.created_at,
-                    updated_at: None,
-                    content,
-                };
-
-                all_posts.push(post);
-            }
-
-            page += 1;
+        for page in 1..=pages {
+            page_futures.push(self.fetch_page_posts(page));
         }
 
-        for post in &all_posts {
-            println!("{:?}", post);
+        // 모든 페이지 크롤링이 완료될 때까지 대기
+        let page_results = futures::future::join_all(page_futures).await;
+        let mut all_metadata = Vec::new();
+
+        for page_result in page_results {
+            let metadata_items = page_result?;
+            for metadata in metadata_items {
+                all_metadata.push(metadata);
+                // posts_limit에 도달하면 더 이상 메타데이터 추가하지 않음
+                if all_metadata.len() >= posts_limit as usize {
+                    break;
+                }
+            }
+        }
+
+        let mut content_futures = Vec::new();
+
+        for metadata in &all_metadata {
+            content_futures.push(self.fetch_post_content(&metadata.url));
+        }
+
+        // 모든 포스트 크롤링이 완료될 때까지 대기
+        let contents = futures::future::join_all(content_futures).await;
+        let mut all_posts = Vec::new();
+
+        for (i, content_result) in contents.into_iter().enumerate() {
+            let metadata = &all_metadata[i];
+            let content = content_result?;
+
+            let post = SsufidPost {
+                id: metadata.id.clone(),
+                title: metadata.title.clone(),
+                category: metadata.category.clone(),
+                url: metadata.url.clone(),
+                created_at: metadata.created_at,
+                updated_at: None,
+                content,
+            };
+
+            all_posts.push(post);
         }
 
         Ok(all_posts)
