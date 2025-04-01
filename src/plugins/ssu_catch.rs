@@ -197,11 +197,17 @@ impl SsufidPlugin for SsuCatchPlugin {
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let mut all_posts = Vec::new();
+        let mut page = 1;
 
-        for page in 1..=posts_limit {
+        while all_posts.len() < posts_limit as usize {
             let metadata_items = self.fetch_page_posts(page).await?;
 
             for metadata in metadata_items {
+                // posts_limit에 도달했는지 확인
+                if all_posts.len() >= posts_limit as usize {
+                    break;
+                }
+
                 let content = self.fetch_post_content(&metadata.url).await?;
 
                 let post = SsufidPost {
@@ -216,6 +222,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
                 all_posts.push(post);
             }
+
+            page += 1;
         }
 
         for post in &all_posts {
