@@ -136,7 +136,10 @@ fn inject_update_date(
             if let Some(old) = old_entries_map.get(&post.id) {
                 let old = *old;
                 if old.contents_eq(&post) {
-                    return post;
+                    return SsufidPost {
+                        updated_at: old.updated_at,
+                        ..post
+                    };
                 }
                 SsufidPost {
                     updated_at: Some(current_time),
