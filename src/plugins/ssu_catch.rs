@@ -122,8 +122,14 @@ impl SsuCatchPlugin {
                     .map(|span| span.text().collect::<String>())
                     .collect::<Vec<String>>();
 
-                let category = spans[0].clone();
-                let title = spans[1].clone();
+                let category = spans
+                    .first()
+                    .map(|s| s.to_string())
+                    .unwrap_or("".to_string());
+                let title = spans
+                    .get(1)
+                    .map(|s| s.to_string())
+                    .unwrap_or("".to_string());
 
                 SsuCatchMetadata {
                     id,
