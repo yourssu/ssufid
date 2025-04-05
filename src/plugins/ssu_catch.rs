@@ -11,9 +11,9 @@ use time::{Date, format_description, macros::offset};
 struct Selectors {
     notice: Selector,
     li: Selector,
-    span: Selector,
     date: Selector,
-    category_title: Selector,
+    category: Selector,
+    title: Selector,
     url: Selector,
     content: Selector,
     #[allow(dead_code)]
@@ -29,9 +29,9 @@ impl Selectors {
         Self {
             notice: Selector::parse(".notice-lists").unwrap(),
             li: Selector::parse("li").unwrap(),
-            span: Selector::parse("span").unwrap(),
             date: Selector::parse(".notice_col1 div").unwrap(),
-            category_title: Selector::parse(".notice_col3 a span").unwrap(),
+            category: Selector::parse(".notice_col3 a span span.label").unwrap(),
+            title: Selector::parse(".notice_col3 a span span:not(.label)").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
             content: Selector::parse("div.bg-white.p-4.mb-5 > div:not(.clearfix)").unwrap(),
             last_page: Selector::parse(".next-btn-last").unwrap(),
@@ -89,19 +89,17 @@ impl SsuCatchPlugin {
                 let date_string = li
                     .select(&self.selectors.date)
                     .next()
-                    .unwrap()
-                    .text()
-                    .collect::<String>();
+                    .map(|element| element.text().collect::<String>())
+                    .unwrap_or_default();
+
                 let date = Date::parse(&date_string, &date_format).unwrap();
                 let offset_datetime = date.midnight().assume_offset(offset!(+09:00));
 
                 let url = li
                     .select(&self.selectors.url)
                     .next()
-                    .unwrap()
-                    .value()
-                    .attr("href")
-                    .unwrap_or("")
+                    .and_then(|element| element.value().attr("href"))
+                    .unwrap_or_default()
                     .to_string();
 
                 let id = Url::parse(&url)
@@ -115,21 +113,17 @@ impl SsuCatchPlugin {
                     .unwrap_or(Cow::Borrowed(""))
                     .to_string();
 
-                let category_title_span = li.select(&self.selectors.category_title).next().unwrap();
+                let category = li
+                    .select(&self.selectors.category)
+                    .next()
+                    .map(|element| element.text().collect::<String>())
+                    .unwrap_or_default();
 
-                let spans = category_title_span
-                    .select(&self.selectors.span)
-                    .map(|span| span.text().collect::<String>())
-                    .collect::<Vec<String>>();
-
-                let category = spans
-                    .first()
-                    .map(|s| s.to_string())
-                    .unwrap_or("".to_string());
-                let title = spans
-                    .get(1)
-                    .map(|s| s.to_string())
-                    .unwrap_or("".to_string());
+                let title = li
+                    .select(&self.selectors.title)
+                    .next()
+                    .map(|element| element.text().collect::<String>())
+                    .unwrap_or_default();
 
                 SsuCatchMetadata {
                     id,
@@ -160,7 +154,7 @@ impl SsuCatchPlugin {
             .select(&self.selectors.content)
             .next()
             .map(|div| div.text().collect::<String>())
-            .unwrap_or("".to_string());
+            .unwrap_or_default();
 
         let content = raw_content
             // &nbsp 제거
@@ -181,10 +175,9 @@ impl SsuCatchPlugin {
         let last_page_url = document
             .select(&self.selectors.last_page)
             .next()
-            .unwrap()
-            .value()
-            .attr("href")
-            .unwrap();
+            .and_then(|element| element.value().attr("href"))
+            .unwrap_or_default();
+
         let parsed_last_page_url = Url::parse(last_page_url).unwrap();
 
         parsed_last_page_url
@@ -300,7 +293,7 @@ mod tests {
     async fn test_fetch_post_content() {
         let ssu_catch_plugin = SsuCatchPlugin::default();
 
-        // 먼저 게시물 목록을 가져와서 첫 번째 게시물의 URL 사용
+        // 1 페이지의 게시물 목록 가져오기
         let posts = ssu_catch_plugin
             .fetch_page_posts(1)
             .await
