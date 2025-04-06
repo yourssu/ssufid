@@ -51,7 +51,7 @@ pub struct SsufidCore {
 
 impl SsufidCore {
     pub const POST_COUNT_LIMIT: u32 = 100;
-    const ATTEMPT_LIMIT: u32 = 3;
+    const CRAWL_ATTEMPT_LIMIT: u32 = 3;
 
     pub fn new(cache_dir: &str) -> Self {
         Self {
@@ -65,16 +65,16 @@ impl SsufidCore {
         plugin: T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let mut attempt = 0;
+        let mut crawl_attempt = 0;
         let new_entries = loop {
-            attempt += 1;
+            crawl_attempt += 1;
             match plugin.crawl(posts_limit).await {
                 Ok(posts) => {
                     break posts;
                 }
                 Err(e) => {
-                    eprintln!("{} attempt: {} - {:?}", T::IDENTIFIER, attempt, e);
-                    if attempt >= SsufidCore::ATTEMPT_LIMIT {
+                    eprintln!("{} attempt: {} - {:?}", T::IDENTIFIER, crawl_attempt, e);
+                    if crawl_attempt >= SsufidCore::CRAWL_ATTEMPT_LIMIT {
                         return Err(e.into());
                     }
                 }
