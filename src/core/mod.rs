@@ -51,6 +51,7 @@ pub struct SsufidCore {
 
 impl SsufidCore {
     pub const POST_COUNT_LIMIT: u32 = 100;
+    const ATTEMPT_LIMIT: u32 = 3;
 
     pub fn new(cache_dir: &str) -> Self {
         Self {
@@ -64,7 +65,21 @@ impl SsufidCore {
         plugin: T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let new_entries = plugin.crawl(posts_limit).await?;
+        let mut attempt = 0;
+        let new_entries = loop {
+            attempt += 1;
+            match plugin.crawl(posts_limit).await {
+                Ok(posts) => {
+                    break posts;
+                }
+                Err(e) => {
+                    eprintln!("{} attempt: {} - {:?}", T::IDENTIFIER, attempt, e);
+                    if attempt >= SsufidCore::ATTEMPT_LIMIT {
+                        return Err(e.into());
+                    }
+                }
+            }
+        };
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
