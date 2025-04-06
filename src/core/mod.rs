@@ -73,7 +73,13 @@ impl SsufidCore {
                     break posts;
                 }
                 Err(e) => {
-                    eprintln!("{} attempt: {} - {:?}", T::IDENTIFIER, crawl_attempt, e);
+                    eprintln!(
+                        "[Plugin {}] Attempt: {}/{} - {:?}",
+                        T::IDENTIFIER,
+                        crawl_attempt,
+                        SsufidCore::CRAWL_ATTEMPT_LIMIT,
+                        e
+                    );
                     if crawl_attempt >= SsufidCore::CRAWL_ATTEMPT_LIMIT {
                         return Err(e.into());
                     }
