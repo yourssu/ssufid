@@ -8,6 +8,8 @@ use time::format_description::well_known::Rfc2822;
 
 use super::{SsufidPost, SsufidSiteData};
 
+const ATOM_NAMESPACE: &str = "http://www.w3.org/2005/Atom";
+
 impl From<SsufidPost> for rss::Item {
     fn from(post: SsufidPost) -> Self {
         let mut builder = ItemBuilder::default();
@@ -20,14 +22,13 @@ impl From<SsufidPost> for rss::Item {
                 permalink: false,
             })
             .content(post.content);
-
         if let Some(updated_at) = post.updated_at {
             let extension = ExtensionBuilder::default()
                 .name("atom:updated")
                 .value(updated_at.format(&Rfc2822).unwrap())
                 .build();
             builder.extension((
-                "http://www.w3.org/2005/Atom".into(),
+                ATOM_NAMESPACE.into(),
                 [("atom:updated".to_string(), vec![extension])]
                     .into_iter()
                     .collect::<BTreeMap<String, Vec<Extension>>>(),
@@ -49,6 +50,7 @@ impl From<SsufidSiteData> for rss::Channel {
                     .map(SsufidPost::into)
                     .collect::<Vec<rss::Item>>(),
             )
+            .namespace(("atom".into(), ATOM_NAMESPACE.into()))
             .build()
     }
 }
