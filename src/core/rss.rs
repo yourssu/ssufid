@@ -50,7 +50,7 @@ impl From<SsufidSiteData> for rss::Channel {
                     .map(SsufidPost::into)
                     .collect::<Vec<rss::Item>>(),
             )
-            .namespace(("atom".into(), ATOM_NAMESPACE.into()))
+            .namespace(("atom".to_string(), ATOM_NAMESPACE.to_string()))
             .build()
     }
 }
