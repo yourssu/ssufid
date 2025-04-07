@@ -43,7 +43,13 @@ async fn save_run<T: SsufidPlugin>(
     base_out_dir: &Path,
     plugin: T,
 ) -> eyre::Result<()> {
-    let site = core.run(plugin, SsufidCore::POST_COUNT_LIMIT).await?;
+    let site = core
+        .run_with_retry(
+            &plugin,
+            SsufidCore::POST_COUNT_LIMIT,
+            SsufidCore::RETRY_COUNT,
+        )
+        .await?;
     let json = serde_json::to_string_pretty(&site)?;
 
     // Use synchronous BufWriter to write pretty xml string.

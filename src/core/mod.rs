@@ -51,7 +51,7 @@ pub struct SsufidCore {
 
 impl SsufidCore {
     pub const POST_COUNT_LIMIT: u32 = 100;
-    const CRAWL_ATTEMPT_LIMIT: u32 = 3;
+    pub const RETRY_COUNT: u32 = 3;
 
     pub fn new(cache_dir: &str) -> Self {
         Self {
@@ -60,13 +60,30 @@ impl SsufidCore {
         }
     }
 
+    pub async fn run_with_retry<T: SsufidPlugin>(
+        &self,
+        plugin: &T,
+        posts_limit: u32,
+        retry_count: u32,
+    ) -> Result<SsufidSiteData, Error> {
+        for attempt in 1..=retry_count {
+            let result = self
+                .run(plugin, posts_limit)
+                .await
+                .inspect_err(|e| eprintln!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+            if result.is_ok() {
+                return result;
+            }
+        }
+        Err(Error::AttemptsExceeded(T::IDENTIFIER))
+    }
+
     pub async fn run<T: SsufidPlugin>(
         &self,
-        plugin: T,
+        plugin: &T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let new_entries =
-            crawl_with_retry(plugin, posts_limit, SsufidCore::CRAWL_ATTEMPT_LIMIT).await?;
+        let new_entries = plugin.crawl(posts_limit).await?;
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -152,26 +169,6 @@ fn inject_update_date(
             }
         })
         .collect()
-}
-
-async fn crawl_with_retry<T: SsufidPlugin>(
-    plugin: T,
-    posts_limit: u32,
-    max_attempt: u32,
-) -> Result<Vec<SsufidPost>, PluginError> {
-    for attempt in 1..=max_attempt {
-        let result = plugin
-            .crawl(posts_limit)
-            .await
-            .inspect_err(|e| eprintln!("{:?} [Attempt {}/{}]", e, attempt, max_attempt));
-        if result.is_ok() {
-            return result;
-        }
-    }
-    Err(PluginError::custom::<T>(
-        "Attempts Exceeded".to_string(),
-        "".to_string(), // TODO message?
-    ))
 }
 
 pub trait SsufidPlugin {
