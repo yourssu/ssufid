@@ -65,26 +65,8 @@ impl SsufidCore {
         plugin: T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let mut crawl_attempt = 0;
-        let new_entries = loop {
-            crawl_attempt += 1;
-            match plugin.crawl(posts_limit).await {
-                Ok(posts) => {
-                    break posts;
-                }
-                Err(e) => {
-                    eprintln!(
-                        "{:?} [Attempt {}/{}]",
-                        e,
-                        crawl_attempt,
-                        SsufidCore::CRAWL_ATTEMPT_LIMIT,
-                    );
-                    if crawl_attempt >= SsufidCore::CRAWL_ATTEMPT_LIMIT {
-                        return Err(e.into());
-                    }
-                }
-            }
-        };
+        let new_entries =
+            crawl_with_retry(plugin, posts_limit, SsufidCore::CRAWL_ATTEMPT_LIMIT).await?;
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -170,6 +152,28 @@ fn inject_update_date(
             }
         })
         .collect()
+}
+
+async fn crawl_with_retry<T: SsufidPlugin>(
+    plugin: T,
+    posts_limit: u32,
+    max_attempt: u32,
+) -> Result<Vec<SsufidPost>, PluginError> {
+    let mut attempt = 0;
+    loop {
+        attempt += 1;
+        match plugin.crawl(posts_limit).await {
+            Ok(r) => {
+                return Ok(r);
+            }
+            Err(e) => {
+                eprintln!("{:?} [Attempt {}/{}]", e, attempt, max_attempt);
+                if attempt >= max_attempt {
+                    return Err(e);
+                }
+            }
+        }
+    }
 }
 
 pub trait SsufidPlugin {
