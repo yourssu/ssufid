@@ -1,6 +1,5 @@
 use std::{io::BufWriter, path::Path, sync::Arc};
 
-use eyre::Ok;
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
