@@ -1,5 +1,6 @@
 use std::{io::BufWriter, path::Path, sync::Arc};
 
+use eyre::Ok;
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
@@ -16,25 +17,25 @@ async fn main() -> eyre::Result<()> {
     let out_dir = Path::new("./out");
 
     let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin::default())];
+    let tasks_len = tasks.len();
 
-    let failed_results: Vec<eyre::Result<()>> = join_all(tasks)
+    // Run all tasks and collect errors
+    let errors: Vec<eyre::Report> = join_all(tasks)
         .await
         .into_iter()
-        .filter(|result| result.is_err())
+        .filter_map(|r| r.err())
         .collect();
 
     core.save_cache().await?;
 
-    if !failed_results.is_empty() {
-        for result in failed_results {
-            if let Err(err) = result {
-                eprintln!("{:?}", err);
-            }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        for err in &errors {
+            eprintln!("{:?}", err);
         }
-        std::process::exit(1);
+        Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
     }
-
-    Ok(())
 }
 
 async fn save_run<T: SsufidPlugin>(
