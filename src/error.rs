@@ -10,6 +10,9 @@ pub enum Error {
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
 
+    #[error("Attempts exceeded error: {0}")]
+    AttemptsExceeded(&'static str),
+
     #[error(transparent)]
     Plugin(Box<PluginError>),
 }

@@ -16,15 +16,25 @@ async fn main() -> eyre::Result<()> {
     let out_dir = Path::new("./out");
 
     let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin::default())];
+    let tasks_len = tasks.len();
 
-    join_all(tasks).await.into_iter().for_each(|result| {
-        if let Err(err) = result {
-            eprintln!("{:?}", err);
-        }
-    });
+    // Run all tasks and collect errors
+    let errors: Vec<eyre::Report> = join_all(tasks)
+        .await
+        .into_iter()
+        .filter_map(|r| r.err())
+        .collect();
 
     core.save_cache().await?;
-    Ok(())
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        for err in &errors {
+            eprintln!("{:?}", err);
+        }
+        Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
+    }
 }
 
 async fn save_run<T: SsufidPlugin>(
@@ -32,7 +42,13 @@ async fn save_run<T: SsufidPlugin>(
     base_out_dir: &Path,
     plugin: T,
 ) -> eyre::Result<()> {
-    let site = core.run(plugin, SsufidCore::POST_COUNT_LIMIT).await?;
+    let site = core
+        .run_with_retry(
+            &plugin,
+            SsufidCore::POST_COUNT_LIMIT,
+            SsufidCore::RETRY_COUNT,
+        )
+        .await?;
     let json = serde_json::to_string_pretty(&site)?;
 
     // Use synchronous BufWriter to write pretty xml string.
