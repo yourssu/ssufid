@@ -159,21 +159,19 @@ async fn crawl_with_retry<T: SsufidPlugin>(
     posts_limit: u32,
     max_attempt: u32,
 ) -> Result<Vec<SsufidPost>, PluginError> {
-    let mut attempt = 0;
-    loop {
-        attempt += 1;
-        match plugin.crawl(posts_limit).await {
-            Ok(r) => {
-                return Ok(r);
-            }
-            Err(e) => {
-                eprintln!("{:?} [Attempt {}/{}]", e, attempt, max_attempt);
-                if attempt >= max_attempt {
-                    return Err(e);
-                }
-            }
+    for attempt in 1..=max_attempt {
+        let result = plugin
+            .crawl(posts_limit)
+            .await
+            .inspect_err(|e| eprintln!("{:?} [Attempt {}/{}]", e, attempt, max_attempt));
+        if result.is_ok() {
+            return result;
         }
     }
+    Err(PluginError::custom::<T>(
+        "Attempts Exceeded".to_string(),
+        "".to_string(), // TODO message?
+    ))
 }
 
 pub trait SsufidPlugin {
