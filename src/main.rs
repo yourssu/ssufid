@@ -17,22 +17,24 @@ async fn main() -> eyre::Result<()> {
 
     let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin::default())];
 
-    let mut is_successful = false;
-    join_all(tasks).await.into_iter().for_each(|result| {
-        if let Err(err) = result {
-            eprintln!("{:?}", err);
-        } else {
-            is_successful = true;
-        }
-    });
+    let failed_results: Vec<eyre::Result<()>> = join_all(tasks)
+        .await
+        .into_iter()
+        .filter(|result| result.is_err())
+        .collect();
 
     core.save_cache().await?;
 
-    if is_successful {
-        Ok(())
-    } else {
-        panic!("all plugin failed")
+    if !failed_results.is_empty() {
+        for result in failed_results {
+            if let Err(err) = result {
+                eprintln!("{:?}", err);
+            }
+        }
+        std::process::exit(1);
     }
+
+    Ok(())
 }
 
 async fn save_run<T: SsufidPlugin>(
