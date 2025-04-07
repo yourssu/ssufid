@@ -204,7 +204,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         let all_metadata = metadata_results
             .into_iter()
-            .filter_map(|result| result.ok())
+            .collect::<Result<Vec<_>, PluginError>>()?
+            .into_iter()
             .flatten()
             .take(posts_limit as usize)
             .collect::<Vec<SsuCatchMetadata>>();
@@ -219,7 +220,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         let all_posts = content_results
             .into_iter()
-            .filter_map(|result| result.ok())
+            .collect::<Result<Vec<String>, PluginError>>()?
+            .into_iter()
             .zip(all_metadata)
             .map(|(content, metadata)| SsufidPost {
                 id: metadata.id,
