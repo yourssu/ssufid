@@ -1,5 +1,6 @@
-use std::{io::BufWriter, path::Path, sync::Arc};
+use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
+use clap::Parser;
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
@@ -7,15 +8,52 @@ use ssufid::{
 };
 use tokio::io::AsyncWriteExt;
 
+#[derive(Parser, Debug)]
+#[command(
+    name = "ssufid",
+    about = "A tool to fetch and save data from SSU sites.",
+    version
+)]
+struct SsufidDaemonOptions {
+    /// The output directory for the fetched data.
+    #[arg(short = 'o', long = "out", default_value = "./out")]
+    out_dir: String,
+
+    /// The cache directory for the fetched data.
+    #[arg(long = "cache", default_value = "./.cache")]
+    cache_dir: String,
+
+    /// The number of retries for fetching data.
+    #[arg(short = 'r', long = "retry", default_value_t = SsufidCore::RETRY_COUNT)]
+    retry_count: u32,
+
+    /// The maximum number of posts to fetch.
+    #[arg(short = 'l', long = "limit", default_value_t = SsufidCore::POST_COUNT_LIMIT)]
+    posts_limit: u32,
+
+    /// The sites to include in the fetch. By default, all sites are included.
+    /// This will override the default sites.
+    #[arg(short = 'i', long, value_delimiter = ',')]
+    include: Vec<String>,
+    #[arg(short = 'e', long, value_delimiter = ',')]
+    /// The sites to exclude from the fetch.
+    exclude: Vec<String>,
+}
+
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     color_eyre::install()?;
+    let options = SsufidDaemonOptions::parse();
 
-    let core = Arc::new(SsufidCore::new("./.cache"));
+    if !options.include.is_empty() && !options.exclude.is_empty() {
+        eyre::bail!("You cannot use both --include and --exclude options at the same time.");
+    }
 
-    let out_dir = Path::new("./out");
+    let out_dir = Path::new(&options.out_dir).to_owned();
 
-    let tasks = vec![save_run(core.clone(), out_dir, SsuCatchPlugin::default())];
+    let core = Arc::new(SsufidCore::new(&options.cache_dir));
+
+    let tasks = construct_tasks(core.clone(), &out_dir, options);
     let tasks_len = tasks.len();
 
     // Run all tasks and collect errors
@@ -37,17 +75,56 @@ async fn main() -> eyre::Result<()> {
     }
 }
 
+fn construct_tasks(
+    core: Arc<SsufidCore>,
+    out_dir: &Path,
+    options: SsufidDaemonOptions,
+) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
+    let include: Option<HashSet<String>> = options
+        .include
+        .is_empty()
+        .not()
+        .then_some(HashSet::from_iter(options.include));
+    let exclude: Option<HashSet<String>> = options
+        .exclude
+        .is_empty()
+        .not()
+        .then_some(HashSet::from_iter(options.exclude));
+    let tasks = [(
+        SsuCatchPlugin::IDENTIFIER,
+        save_run(
+            core,
+            out_dir,
+            SsuCatchPlugin::new(),
+            options.posts_limit,
+            options.retry_count,
+        ),
+    )];
+
+    if let Some(include) = include {
+        tasks
+            .into_iter()
+            .filter_map(|(id, task)| include.contains(id).then_some(task))
+            .collect()
+    } else if let Some(exclude) = exclude {
+        tasks
+            .into_iter()
+            .filter_map(|(id, task)| exclude.contains(id).not().then_some(task))
+            .collect()
+    } else {
+        tasks.into_iter().map(|(_, task)| task).collect()
+    }
+}
+
 async fn save_run<T: SsufidPlugin>(
     core: Arc<SsufidCore>,
     base_out_dir: &Path,
     plugin: T,
+    posts_limit: u32,
+    retry_count: u32,
 ) -> eyre::Result<()> {
     let site = core
-        .run_with_retry(
-            &plugin,
-            SsufidCore::POST_COUNT_LIMIT,
-            SsufidCore::RETRY_COUNT,
-        )
+        .run_with_retry(&plugin, posts_limit, retry_count)
         .await?;
     let json = serde_json::to_string_pretty(&site)?;
 
