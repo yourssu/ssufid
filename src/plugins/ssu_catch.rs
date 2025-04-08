@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use log::{info, warn};
 use scraper::{Html, Selector};
 use url::Url;
 
@@ -84,7 +85,7 @@ impl SsuCatchPlugin {
         let posts = notice_list
             .select(&self.selectors.li)
             .skip(1)
-            .map(|li| {
+            .filter_map(|li| {
                 let date_format = format_description::parse("[year].[month].[day]").unwrap();
                 let date_string = li
                     .select(&self.selectors.date)
@@ -125,13 +126,18 @@ impl SsuCatchPlugin {
                     .map(|element| element.text().collect::<String>())
                     .unwrap_or_default();
 
-                SsuCatchMetadata {
+                if id.is_empty() {
+                    warn!("ID is empty for post: {}", title);
+                    return None;
+                }
+
+                Some(SsuCatchMetadata {
                     id,
                     title,
                     category,
                     url,
                     created_at: offset_datetime,
-                }
+                })
             })
             .collect();
 
@@ -199,8 +205,12 @@ impl SsufidPlugin for SsuCatchPlugin {
         let pages = posts_limit / Self::POSTS_PER_PAGE + 1;
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
-        let metadata_results =
-            futures::future::join_all((1..=pages).map(|page| self.fetch_page_posts(page))).await;
+        let metadata_results = futures::future::join_all((1..=pages).map(|page| {
+            let result = self.fetch_page_posts(page);
+            info!("Crawling post metadata from page: {}/{}", page, pages);
+            result
+        }))
+        .await;
 
         let all_metadata = metadata_results
             .into_iter()
@@ -211,11 +221,11 @@ impl SsufidPlugin for SsuCatchPlugin {
             .collect::<Vec<SsuCatchMetadata>>();
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
-        let content_results = futures::future::join_all(
-            all_metadata
-                .iter()
-                .map(|metadata| self.fetch_post_content(&metadata.url)),
-        )
+        let content_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
+            let result = self.fetch_post_content(&metadata.url);
+            info!("Crawling post content from post: {}", metadata.title);
+            result
+        }))
         .await;
 
         let all_posts = content_results
