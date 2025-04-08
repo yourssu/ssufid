@@ -55,7 +55,6 @@ impl Default for SsuCatchPlugin {
 }
 
 impl SsuCatchPlugin {
-    const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
     const POSTS_PER_PAGE: u32 = 15; // 페이지당 게시글 수
 
     pub fn new() -> Self {
@@ -194,6 +193,7 @@ impl SsufidPlugin for SsuCatchPlugin {
     const IDENTIFIER: &'static str = "scatch.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
+    const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let pages = posts_limit / Self::POSTS_PER_PAGE + 1;

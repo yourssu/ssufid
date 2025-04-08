@@ -103,7 +103,7 @@ impl SsufidCore {
         }
         Ok(SsufidSiteData {
             title: T::TITLE.to_string(),
-            source: T::IDENTIFIER.to_string(),
+            source: T::BASE_URL.to_string(),
             description: T::DESCRIPTION.to_string(),
             items: updated_entries,
         })
@@ -175,6 +175,7 @@ pub trait SsufidPlugin {
     const TITLE: &'static str;
     const IDENTIFIER: &'static str;
     const DESCRIPTION: &'static str;
+    const BASE_URL: &'static str;
 
     fn crawl(
         &self,
