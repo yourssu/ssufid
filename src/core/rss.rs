@@ -4,7 +4,7 @@ use rss::{
     ChannelBuilder, ItemBuilder,
     extension::{Extension, ExtensionBuilder},
 };
-use time::format_description::well_known::Rfc2822;
+use time::format_description::well_known::{Rfc2822, Rfc3339};
 
 use super::{SsufidPost, SsufidSiteData};
 
@@ -13,19 +13,37 @@ const ATOM_NAMESPACE: &str = "http://www.w3.org/2005/Atom";
 impl From<SsufidPost> for rss::Item {
     fn from(post: SsufidPost) -> Self {
         let mut builder = ItemBuilder::default();
+
+        let description = {
+            let truncate_idx = post
+                .content
+                .char_indices()
+                .nth(50)
+                .map_or(post.content.len(), |(i, _)| i);
+            if truncate_idx < post.content.len() {
+                let mut truncated = post.content.clone();
+                truncated.truncate(truncate_idx);
+                truncated.push_str("...");
+                truncated
+            } else {
+                post.content.clone()
+            }
+        };
+
         builder
             .title(post.title)
-            .link(post.url)
+            .link(post.url.clone())
             .pub_date(post.created_at.format(&Rfc2822).unwrap())
             .guid::<rss::Guid>(rss::Guid {
                 value: post.id,
                 permalink: false,
             })
+            .description(description)
             .content(post.content);
         if let Some(updated_at) = post.updated_at {
             let extension = ExtensionBuilder::default()
                 .name("atom:updated")
-                .value(updated_at.format(&Rfc2822).unwrap())
+                .value(updated_at.format(&Rfc3339).unwrap())
                 .build();
             builder.extension((
                 ATOM_NAMESPACE.into(),
@@ -51,6 +69,10 @@ impl From<SsufidSiteData> for rss::Channel {
                     .collect::<Vec<rss::Item>>(),
             )
             .namespace(("atom".to_string(), ATOM_NAMESPACE.to_string()))
+            .namespace((
+                "content".to_string(),
+                "http://purl.org/rss/1.0/modules/content/".to_string(),
+            ))
             .build()
     }
 }
@@ -87,7 +109,7 @@ mod tests {
                 .and_then(|m| m.get("atom:updated"))
                 .and_then(|v| v.first())
                 .and_then(|e| e.value()),
-            Some("Wed, 27 Mar 2024 12:00:00 +0000")
+            Some("2024-03-27T12:00:00Z")
         );
         assert_eq!(rss_item.content(), Some("Test Content"));
     }
@@ -123,6 +145,7 @@ mod tests {
         assert_eq!(rss_item.link(), Some("https://example.com/post"));
         assert_eq!(rss_item.pub_date(), Some("Fri, 22 Mar 2024 12:00:00 +0000"));
         assert_eq!(rss_item.guid().unwrap().value(), "test-id");
+        assert_eq!(rss_item.description(), Some("Test Content"));
         assert_eq!(rss_item.content(), Some("Test Content"));
     }
 }
