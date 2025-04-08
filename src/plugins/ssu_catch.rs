@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use log::info;
 use scraper::{Html, Selector};
 use url::Url;
 
@@ -199,8 +200,12 @@ impl SsufidPlugin for SsuCatchPlugin {
         let pages = posts_limit / Self::POSTS_PER_PAGE + 1;
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
-        let metadata_results =
-            futures::future::join_all((1..=pages).map(|page| self.fetch_page_posts(page))).await;
+        let metadata_results = futures::future::join_all((1..=pages).map(|page| {
+            let result = self.fetch_page_posts(page);
+            info!("포스트 메타데이터 크롤링 중: {}/{}", page, pages);
+            result
+        }))
+        .await;
 
         let all_metadata = metadata_results
             .into_iter()
@@ -211,11 +216,11 @@ impl SsufidPlugin for SsuCatchPlugin {
             .collect::<Vec<SsuCatchMetadata>>();
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
-        let content_results = futures::future::join_all(
-            all_metadata
-                .iter()
-                .map(|metadata| self.fetch_post_content(&metadata.url)),
-        )
+        let content_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
+            let result = self.fetch_post_content(&metadata.url);
+            info!("포스트 컨텐츠 크롤링 중: {}", metadata.id);
+            result
+        }))
         .await;
 
         let all_posts = content_results

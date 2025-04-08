@@ -1,6 +1,7 @@
 use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
 use clap::Parser;
+use env_logger::{Builder, Env};
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
@@ -42,6 +43,8 @@ struct SsufidDaemonOptions {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    Builder::from_env(Env::default().filter_or("RUST_LOG", "info")).init();
+
     color_eyre::install()?;
     let options = SsufidDaemonOptions::parse();
 
