@@ -1,4 +1,4 @@
-use std::{io::BufWriter, path::Path, sync::Arc};
+use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
 use clap::Parser;
 use futures::future::join_all;
@@ -80,6 +80,16 @@ fn construct_tasks(
     out_dir: &Path,
     options: SsufidDaemonOptions,
 ) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
+    let include: Option<HashSet<String>> = options
+        .include
+        .is_empty()
+        .not()
+        .then_some(HashSet::from_iter(options.include));
+    let exclude: Option<HashSet<String>> = options
+        .exclude
+        .is_empty()
+        .not()
+        .then_some(HashSet::from_iter(options.exclude));
     let tasks = [(
         SsuCatchPlugin::IDENTIFIER,
         save_run(
@@ -91,16 +101,18 @@ fn construct_tasks(
         ),
     )];
 
-    if options.include.is_empty() {
+    if let Some(include) = include {
         tasks
             .into_iter()
-            .filter_map(|(id, task)| options.exclude.iter().all(|x| x != id).then_some(task))
+            .filter_map(|(id, task)| include.contains(id).then_some(task))
+            .collect()
+    } else if let Some(exclude) = exclude {
+        tasks
+            .into_iter()
+            .filter_map(|(id, task)| exclude.contains(id).not().then_some(task))
             .collect()
     } else {
-        tasks
-            .into_iter()
-            .filter_map(|(id, task)| options.include.iter().any(|x| x == id).then_some(task))
-            .collect()
+        tasks.into_iter().map(|(_, task)| task).collect()
     }
 }
 
