@@ -168,7 +168,7 @@ impl SsuCatchPlugin {
             .map(|line| line.trim())
             .filter(|line| !line.is_empty())
             .collect::<Vec<&str>>()
-            .join(" ");
+            .join("\n");
 
         Ok(content)
     }
