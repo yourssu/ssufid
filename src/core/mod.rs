@@ -222,6 +222,7 @@ mod tests {
         tokio::fs::create_dir_all(dir).await.unwrap();
         let mut test_file = tokio::fs::File::create(&test_file_path).await.unwrap();
         test_file.write_all(mock_json.as_bytes()).await.unwrap();
+        test_file.flush().await.unwrap();
 
         // read file
         let core = SsufidCore::new("./cache_test");
