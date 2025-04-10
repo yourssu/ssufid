@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use rss::{
-    ChannelBuilder, ItemBuilder,
     extension::{Extension, ExtensionBuilder},
+    ChannelBuilder, ItemBuilder,
 };
 use time::format_description::well_known::{Rfc2822, Rfc3339};
 
@@ -14,21 +14,13 @@ impl From<SsufidPost> for rss::Item {
     fn from(post: SsufidPost) -> Self {
         let mut builder = ItemBuilder::default();
 
-        let description = {
-            let truncate_idx = post
-                .content
-                .char_indices()
-                .nth(50)
-                .map_or(post.content.len(), |(i, _)| i);
-            if truncate_idx < post.content.len() {
-                let mut truncated = post.content.clone();
-                truncated.truncate(truncate_idx);
-                truncated.push_str("...");
-                truncated
-            } else {
-                post.content.clone()
-            }
-        };
+        let description = post
+            .content
+            .char_indices()
+            .nth(50)
+            .map_or_else(|| post.content.clone(), |(i, _)| {
+                format!("{}...", &post.content[..i])
+            });
 
         builder
             .title(post.title)
