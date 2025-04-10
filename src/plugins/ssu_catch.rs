@@ -12,10 +12,10 @@ use time::{Date, format_description, macros::offset};
 struct Selectors {
     notice: Selector,
     li: Selector,
-    date: Selector,
-    category: Selector,
-    title: Selector,
     url: Selector,
+    title: Selector,
+    created_at: Selector,
+    category: Selector,
     content: Selector,
     #[allow(dead_code)]
     last_page: Selector,
@@ -30,12 +30,13 @@ impl Selectors {
         Self {
             notice: Selector::parse(".notice-lists").unwrap(),
             li: Selector::parse("li").unwrap(),
-            date: Selector::parse(".notice_col1 div").unwrap(),
-            category: Selector::parse(".notice_col3 a span span.label").unwrap(),
-            title: Selector::parse(".notice_col3 a span span:not(.label)").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
-            content: Selector::parse("div.bg-white.p-4.mb-5 > div:not(.clearfix)").unwrap(),
             last_page: Selector::parse(".next-btn-last").unwrap(),
+            title: Selector::parse("div.bg-white h2").unwrap(),
+            category: Selector::parse("div.bg-white span.label").unwrap(),
+            created_at: Selector::parse("div.bg-white > div.clearfix > div.float-left.mr-4")
+                .unwrap(),
+            content: Selector::parse("div.bg-white > div:not(.clearfix)").unwrap(),
         }
     }
 }
@@ -43,10 +44,7 @@ impl Selectors {
 #[derive(Debug)]
 struct SsuCatchMetadata {
     id: String,
-    title: String,
-    category: String,
     url: String,
-    created_at: time::OffsetDateTime,
 }
 
 impl Default for SsuCatchPlugin {
@@ -57,6 +55,7 @@ impl Default for SsuCatchPlugin {
 
 impl SsuCatchPlugin {
     const POSTS_PER_PAGE: u32 = 15; // 페이지당 게시글 수
+    const DATE_FORMAT: &'static str = "[year]년 [month padding:none]월 [day padding:none]일";
 
     pub fn new() -> Self {
         Self {
@@ -64,7 +63,10 @@ impl SsuCatchPlugin {
         }
     }
 
-    async fn fetch_page_posts(&self, page: u32) -> Result<Vec<SsuCatchMetadata>, PluginError> {
+    async fn fetch_page_posts_metadata(
+        &self,
+        page: u32,
+    ) -> Result<Vec<SsuCatchMetadata>, PluginError> {
         let page_url = format!("{}/page/{}", Self::BASE_URL, page);
 
         let response = reqwest::get(page_url)
@@ -81,20 +83,10 @@ impl SsuCatchPlugin {
         let notice_list = document.select(&self.selectors.notice).next().unwrap();
 
         // 첫 번째 li 요소(헤더)는 건너뛰기 위해 skip(1)을 사용
-        let posts = notice_list
+        let posts_metadata = notice_list
             .select(&self.selectors.li)
             .skip(1)
             .filter_map(|li| {
-                let date_format = format_description::parse("[year].[month].[day]").unwrap();
-                let date_string = li
-                    .select(&self.selectors.date)
-                    .next()
-                    .map(|element| element.text().collect::<String>())
-                    .unwrap_or_default();
-
-                let date = Date::parse(&date_string, &date_format).unwrap();
-                let offset_datetime = date.midnight().assume_offset(offset!(+09:00));
-
                 let url = li
                     .select(&self.selectors.url)
                     .next()
@@ -113,38 +105,23 @@ impl SsuCatchPlugin {
                     .unwrap_or(Cow::Borrowed(""))
                     .to_string();
 
-                let category = li
-                    .select(&self.selectors.category)
-                    .next()
-                    .map(|element| element.text().collect::<String>())
-                    .unwrap_or_default();
-
-                let title = li
-                    .select(&self.selectors.title)
-                    .next()
-                    .map(|element| element.text().collect::<String>())
-                    .unwrap_or_default();
-
                 if id.is_empty() {
-                    warn!("ID is empty for post: {}", title);
+                    warn!("ID is empty for URL: {}", url);
                     return None;
                 }
 
-                Some(SsuCatchMetadata {
-                    id,
-                    title,
-                    category,
-                    url,
-                    created_at: offset_datetime,
-                })
+                Some(SsuCatchMetadata { id, url })
             })
             .collect();
 
-        Ok(posts)
+        Ok(posts_metadata)
     }
 
-    async fn fetch_post_content(&self, post_url: &str) -> Result<String, PluginError> {
-        let response = reqwest::get(post_url)
+    async fn fetch_post(
+        &self,
+        post_metadata: &SsuCatchMetadata,
+    ) -> Result<SsufidPost, PluginError> {
+        let response = reqwest::get(&post_metadata.url)
             .await
             .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
 
@@ -154,6 +131,30 @@ impl SsuCatchPlugin {
             .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
 
         let document = Html::parse_document(&html);
+
+        let title = document
+            .select(&self.selectors.title)
+            .next()
+            .map(|element| element.text().collect::<String>())
+            .unwrap_or_default();
+
+        let category = document
+            .select(&self.selectors.category)
+            .next()
+            .map(|element| element.text().collect::<String>())
+            .unwrap_or_default();
+
+        let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
+        let date_string = document
+            .select(&self.selectors.created_at)
+            .next()
+            .map(|element| element.text().collect::<String>().trim().to_string())
+            .unwrap_or_default();
+
+        let created_at = Date::parse(&date_string, &date_format)
+            .unwrap()
+            .midnight()
+            .assume_offset(offset!(+09:00));
 
         let raw_content = document
             .select(&self.selectors.content)
@@ -170,7 +171,15 @@ impl SsuCatchPlugin {
             .collect::<Vec<&str>>()
             .join("\n");
 
-        Ok(content)
+        Ok(SsufidPost {
+            id: post_metadata.id.clone(),
+            title,
+            category,
+            url: post_metadata.url.clone(),
+            created_at,
+            updated_at: None,
+            content,
+        })
     }
 
     #[allow(dead_code)]
@@ -206,9 +215,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
         let metadata_results = futures::future::join_all((1..=pages).map(|page| {
-            let result = self.fetch_page_posts(page);
             info!("Crawling post metadata from page: {}/{}", page, pages);
-            result
+            self.fetch_page_posts_metadata(page)
         }))
         .await;
 
@@ -221,28 +229,15 @@ impl SsufidPlugin for SsuCatchPlugin {
             .collect::<Vec<SsuCatchMetadata>>();
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
-        let content_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
-            let result = self.fetch_post_content(&metadata.url);
-            info!("Crawling post content from post: {}", metadata.title);
-            result
+        let post_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
+            info!("Crawling post content for ID: {}", metadata.id);
+            self.fetch_post(metadata)
         }))
         .await;
 
-        let all_posts = content_results
+        let all_posts = post_results
             .into_iter()
-            .collect::<Result<Vec<String>, PluginError>>()?
-            .into_iter()
-            .zip(all_metadata)
-            .map(|(content, metadata)| SsufidPost {
-                id: metadata.id,
-                title: metadata.title,
-                category: metadata.category,
-                url: metadata.url,
-                created_at: metadata.created_at,
-                updated_at: None,
-                content,
-            })
-            .collect();
+            .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
 
         Ok(all_posts)
     }
@@ -253,78 +248,64 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_fetch_page_posts() {
+    async fn test_fetch_page_posts_metadata() {
         let ssu_catch_plugin = SsuCatchPlugin::default();
 
-        // 실제 API에 요청하여 1페이지 데이터 가져오기
-        let posts = ssu_catch_plugin
-            .fetch_page_posts(1)
+        // 1 페이지의 게시글 메타데이터 목록 가져오기
+        let posts_metadata = ssu_catch_plugin
+            .fetch_page_posts_metadata(1)
             .await
-            .expect("Failed to fetch page posts");
+            .expect("Failed to fetch page posts metadata");
 
-        assert!(!posts.is_empty(), "Posts should not be empty");
-
-        let first_post = &posts[0];
-
-        println!("First post: {:?}", first_post);
-
-        // 제목, 카테고리, ID, URL 등이 올바르게 추출되었는지 확인
-        assert!(!first_post.title.is_empty(), "Title should not be empty");
         assert!(
-            !first_post.category.is_empty(),
-            "Category should not be empty"
-        );
-        assert!(!first_post.id.is_empty(), "ID should not be empty");
-        assert!(!first_post.url.is_empty(), "URL should not be empty");
-        assert!(
-            first_post.url.starts_with("https"),
-            "URL should start with https"
+            !posts_metadata.is_empty(),
+            "Posts metadata should not be empty"
         );
 
-        // 날짜 형식 검증
+        let first_post_metadata = &posts_metadata[0];
+
+        println!("First post metadata: {:?}", first_post_metadata);
+
+        // ID, URL이 올바르게 추출되었는지 확인
+        assert!(!first_post_metadata.id.is_empty(), "ID should not be empty");
         assert!(
-            first_post.created_at.year() >= 2025,
-            "Created date should be recent"
+            !first_post_metadata.url.is_empty(),
+            "URL should not be empty"
         );
     }
 
     #[tokio::test]
-    async fn test_fetch_post_content() {
+    async fn test_fetch_post() {
         let ssu_catch_plugin = SsuCatchPlugin::default();
 
-        // 1 페이지의 게시물 목록 가져오기
-        let posts = ssu_catch_plugin
-            .fetch_page_posts(1)
+        // 1 페이지의 게시글 메타데이터 목록 가져오기
+        let posts_metadata = ssu_catch_plugin
+            .fetch_page_posts_metadata(1)
             .await
-            .expect("Failed to fetch page posts");
+            .expect("Failed to fetch page posts metadata");
 
-        assert!(!posts.is_empty(), "Posts should not be empty");
-
-        let first_post_url = &posts[0].url;
-
-        // 실제 게시물 내용 가져오기
-        let content = ssu_catch_plugin
-            .fetch_post_content(first_post_url)
-            .await
-            .expect("Failed to fetch post content");
-
-        println!(
-            "Content preview: {}",
-            content.chars().take(200).collect::<String>()
+        assert!(
+            !posts_metadata.is_empty(),
+            "Posts metadata should not be empty"
         );
 
-        // 내용이 비어있지 않은지 확인
-        assert!(!content.is_empty(), "Content should not be empty");
+        let first_post_metadata = &posts_metadata[0];
 
-        // 내용에 불필요한 공백 문자가 정리되었는지 확인
+        // 실제 게시물 가져오기
+        let post = ssu_catch_plugin
+            .fetch_post(&first_post_metadata)
+            .await
+            .expect("Failed to fetch post");
+
+        // 제목, 카테고리, 내용 등이 올바르게 추출되었는지 확인
+        assert!(!post.title.is_empty(), "Title should not be empty");
+        assert!(!post.category.is_empty(), "Category should not be empty");
+        assert!(post.url.starts_with("https"), "URL should start with https");
+
+        // 날짜 형식 검증
         assert!(
-            !content.contains("\n\n"),
-            "Content should not contain consecutive newlines"
-        );
-        assert!(!content.contains("\t"), "Content should not contain tabs");
-        assert!(
-            !content.contains("\u{a0}"),
-            "Content should not contain non-breaking spaces"
+            post.created_at.year() >= 2025,
+            "Created date should be recent"
         );
     }
 
