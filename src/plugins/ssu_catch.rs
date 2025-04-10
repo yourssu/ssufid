@@ -216,9 +216,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
         let metadata_results = futures::future::join_all((1..=pages).map(|page| {
-            let result = self.fetch_page_posts_metadata(page);
             info!("Crawling post metadata from page: {}/{}", page, pages);
-            result
+            self.fetch_page_posts_metadata(page)
         }))
         .await;
 
@@ -232,9 +231,8 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
         let post_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
-            let result = self.fetch_post(metadata);
             info!("Crawling post content for ID: {}", metadata.id);
-            result
+            self.fetch_post(metadata)
         }))
         .await;
 
