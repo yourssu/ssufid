@@ -55,6 +55,7 @@ impl Default for SsuCatchPlugin {
 
 impl SsuCatchPlugin {
     const POSTS_PER_PAGE: u32 = 15; // 페이지당 게시글 수
+    const DATE_FORMAT: &'static str = "[year]년 [month padding:none]월 [day padding:none]일";
 
     pub fn new() -> Self {
         Self {
@@ -143,9 +144,7 @@ impl SsuCatchPlugin {
             .map(|element| element.text().collect::<String>())
             .unwrap_or_default();
 
-        let date_format =
-            format_description::parse("[year]년 [month padding:none]월 [day padding:none]일")
-                .unwrap();
+        let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
         let date_string = document
             .select(&self.selectors.created_at)
             .next()
