@@ -84,6 +84,7 @@ mod tests {
             url: "https://example.com/test".to_string(),
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: Some(datetime!(2024-03-27 12:00:00 UTC)),
+            thumbnail: "https://example.com/thumbnail.jpg".to_string(),
             content: "Test Content".to_string(),
             attachments: vec![],
         };
@@ -116,6 +117,7 @@ mod tests {
             url: "https://example.com/post".to_string(),
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: None,
+            thumbnail: "https://example.com/thumbnail.jpg".to_string(),
             content: "Test Content".to_string(),
             attachments: vec![],
         };

@@ -17,6 +17,7 @@ struct Selectors {
     created_at: Selector,
     category: Selector,
     content: Selector,
+    thumbnail: Selector,
     attachments: Selector,
     #[allow(dead_code)]
     last_page: Selector,
@@ -37,6 +38,7 @@ impl Selectors {
             category: Selector::parse("div.bg-white span.label").unwrap(),
             created_at: Selector::parse("div.bg-white > div.clearfix > div.float-left.mr-4")
                 .unwrap(),
+            thumbnail: Selector::parse("div.bg-white img").unwrap(),
             content: Selector::parse("div.bg-white > div:not(.clearfix)").unwrap(),
             attachments: Selector::parse(".download-list a[download]").unwrap(),
         }
@@ -158,6 +160,13 @@ impl SsuCatchPlugin {
             .midnight()
             .assume_offset(offset!(+09:00));
 
+        let thumbnail = document
+            .select(&self.selectors.thumbnail)
+            .next()
+            .and_then(|element| element.value().attr("src"))
+            .unwrap_or_default()
+            .to_string();
+
         let raw_content = document
             .select(&self.selectors.content)
             .next()
@@ -190,6 +199,7 @@ impl SsuCatchPlugin {
             url: post_metadata.url.clone(),
             created_at,
             updated_at: None,
+            thumbnail,
             content,
             attachments,
         })
