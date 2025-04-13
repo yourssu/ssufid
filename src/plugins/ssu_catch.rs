@@ -142,11 +142,13 @@ impl SsuCatchPlugin {
             .map(|element| element.text().collect::<String>())
             .unwrap_or_default();
 
-        let category = document
-            .select(&self.selectors.category)
-            .next()
-            .map(|element| element.text().collect::<String>())
-            .unwrap_or_default();
+        let category = vec![
+            document
+                .select(&self.selectors.category)
+                .next()
+                .map(|element| element.text().collect::<String>())
+                .unwrap_or_default(),
+        ];
 
         let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
         let date_string = document

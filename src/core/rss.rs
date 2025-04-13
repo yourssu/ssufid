@@ -113,7 +113,7 @@ mod tests {
         let post = SsufidPost {
             id: "test-id".to_string(),
             title: "Test Post".to_string(),
-            category: "Test Category".to_string(),
+            category: vec!["Test Category".to_string()],
             url: "https://example.com/post".to_string(),
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: None,

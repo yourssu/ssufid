@@ -11,7 +11,8 @@ use crate::error::{Error, PluginError};
 pub struct SsufidPost {
     pub id: String,
     pub title: String,
-    pub category: String,
+    #[serde(default)]
+    pub category: Vec<String>,
     pub url: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
@@ -28,7 +29,7 @@ impl SsufidPost {
     pub fn contents_eq(&self, other: &SsufidPost) -> bool {
         self.id.trim() == other.id.trim()
             && self.title.trim() == other.title.trim()
-            && self.category.trim() == other.category.trim()
+            && self.category == other.category
             && self.content.trim() == other.content.trim()
     }
 }
@@ -190,6 +191,8 @@ pub trait SsufidPlugin {
 // 임시 테스트
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use time::OffsetDateTime;
     use time::macros::datetime;
     use tokio::io::AsyncWriteExt;
@@ -202,7 +205,7 @@ mod tests {
             SsufidPost {
                 id: "test-id".to_string(),
                 title: "Test Title".to_string(),
-                category: "Test Category".to_string(),
+                category: vec!["Test Category".to_string()],
                 url: "https://example.com/test".to_string(),
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: None,
@@ -213,7 +216,7 @@ mod tests {
             SsufidPost {
                 id: "test-id".to_string(),
                 title: "Test Title".to_string(),
-                category: "Test Category".to_string(),
+                category: vec!["Test Category".to_string()],
                 url: "https://example.com/test".to_string(),
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: Some(datetime!(2024-03-22 12:00:00 UTC)),
@@ -255,7 +258,7 @@ mod tests {
             SsufidPost {
                 id: "1".to_string(),
                 title: "Old Title 1".to_string(),
-                category: "Category 1".to_string(),
+                category: vec!["Category 1".to_string()],
                 url: "http://example.com/1".to_string(),
                 created_at: now,
                 updated_at: None,
@@ -266,7 +269,7 @@ mod tests {
             SsufidPost {
                 id: "2".to_string(),
                 title: "Old Title 2".to_string(),
-                category: "Category 2".to_string(),
+                category: vec!["Category 2".to_string()],
                 url: "http://example.com/2".to_string(),
                 created_at: now,
                 updated_at: Some(now),
@@ -281,7 +284,7 @@ mod tests {
             SsufidPost {
                 id: "1".to_string(),
                 title: "Old Title 1".to_string(),
-                category: "Category 1".to_string(),
+                category: vec!["Category 1".to_string()],
                 url: "http://example.com/1".to_string(),
                 created_at: now,
                 updated_at: None,
@@ -293,7 +296,7 @@ mod tests {
             SsufidPost {
                 id: "2".to_string(),
                 title: "Updated Title 2".to_string(), // 제목 변경
-                category: "Category 2".to_string(),
+                category: vec!["Category 2".to_string()],
                 url: "http://example.com/2".to_string(),
                 created_at: now,
                 updated_at: None,
@@ -305,7 +308,7 @@ mod tests {
             SsufidPost {
                 id: "3".to_string(),
                 title: "New Title 3".to_string(),
-                category: "Category 3".to_string(),
+                category: vec!["Category 3".to_string()],
                 url: "http://example.com/3".to_string(),
                 created_at: now,
                 updated_at: None,
@@ -317,7 +320,7 @@ mod tests {
             SsufidPost {
                 id: "4".to_string(),
                 title: "Title 4".to_string(),
-                category: "Category 4".to_string(),
+                category: vec!["Category 4".to_string()],
                 url: "http://example.com/4".to_string(),
                 created_at: now,
                 updated_at: Some(now),
