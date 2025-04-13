@@ -1,6 +1,7 @@
 use reqwest::header::{
     ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CACHE_CONTROL, CONNECTION, HeaderMap,
 };
+use scraper::ElementRef;
 
 pub(super) const DEFAULT_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36";
 
@@ -17,4 +18,18 @@ pub(super) fn default_header() -> HeaderMap {
     headers.insert(CACHE_CONTROL, "max-age=0".parse().unwrap());
     headers.insert(CONNECTION, "keep-alive".parse().unwrap());
     headers
+}
+
+pub(super) trait ElementRefExt {
+    fn to_string(&self, delimiter: &str) -> String;
+}
+
+impl ElementRefExt for ElementRef<'_> {
+    fn to_string(&self, delimiter: &str) -> String {
+        self.text()
+            .collect::<Vec<_>>()
+            .join(delimiter)
+            .trim()
+            .to_string()
+    }
 }
