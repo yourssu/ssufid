@@ -18,6 +18,8 @@ pub struct SsufidPost {
     #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<time::OffsetDateTime>,
     pub content: String,
+    #[serde(default)]
+    pub attachments: Vec<String>,
 }
 
 impl SsufidPost {
@@ -203,6 +205,7 @@ mod tests {
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: None,
                 content: "Test Content".to_string(),
+                attachments: vec![],
             },
             SsufidPost {
                 id: "test-id".to_string(),
@@ -212,6 +215,7 @@ mod tests {
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: Some(datetime!(2024-03-22 12:00:00 UTC)),
                 content: "Test Content".to_string(),
+                attachments: vec![],
             },
         ];
 
@@ -252,6 +256,7 @@ mod tests {
                 created_at: now,
                 updated_at: None,
                 content: "Old Content 1".to_string(),
+                attachments: vec![],
             },
             SsufidPost {
                 id: "2".to_string(),
@@ -261,6 +266,7 @@ mod tests {
                 created_at: now,
                 updated_at: Some(now),
                 content: "Old Content 2".to_string(),
+                attachments: vec![],
             },
         ];
 
@@ -274,6 +280,7 @@ mod tests {
                 created_at: now,
                 updated_at: None,
                 content: "Old Content 1".to_string(),
+                attachments: vec![],
             },
             // Case 2: 기존 포스트와 내용이 다른 경우
             SsufidPost {
@@ -284,6 +291,7 @@ mod tests {
                 created_at: now,
                 updated_at: None,
                 content: "Old Content 2".to_string(),
+                attachments: vec![],
             },
             // Case 3: 새로운 포스트인 경우
             SsufidPost {
@@ -294,6 +302,7 @@ mod tests {
                 created_at: now,
                 updated_at: None,
                 content: "New Content 3".to_string(),
+                attachments: vec![],
             },
             // Case 4: 이미 updated_at이 설정된 경우
             SsufidPost {
@@ -304,6 +313,7 @@ mod tests {
                 created_at: now,
                 updated_at: Some(now),
                 content: "Content 4".to_string(),
+                attachments: vec![],
             },
         ];
 

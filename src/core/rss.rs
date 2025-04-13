@@ -85,6 +85,7 @@ mod tests {
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: Some(datetime!(2024-03-27 12:00:00 UTC)),
             content: "Test Content".to_string(),
+            attachments: vec![],
         };
 
         let rss_item: rss::Item = post.into();
@@ -116,6 +117,7 @@ mod tests {
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: None,
             content: "Test Content".to_string(),
+            attachments: vec![],
         };
 
         let site_data = SsufidSiteData {
