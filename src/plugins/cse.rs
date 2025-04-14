@@ -1,9 +1,8 @@
 use scraper::{Html, Selector};
 use time::{
-    Date, OffsetDateTime,
+    Date,
     format_description::BorrowedFormatItem,
     macros::{format_description, offset},
-    parsing::Parsed,
 };
 use url::Url;
 
@@ -30,7 +29,9 @@ struct Selectors {
 
     // in the content page
     title: Selector,
+    thumbnail: Selector,
     content: Selector,
+    attachments: Selector,
 }
 
 impl Selectors {
@@ -42,7 +43,9 @@ impl Selectors {
             author: Selector::parse("td.td_name.sv_use > span").unwrap(),
             created_at: Selector::parse("td.td_datetime").unwrap(),
             title: Selector::parse("#bo_v_title > span").unwrap(),
+            thumbnail: Selector::parse("#bo_v_con img").unwrap(),
             content: Selector::parse("#bo_v_con").unwrap(),
+            attachments: Selector::parse("#bo_v_file > ul > li > a").unwrap(),
         }
     }
 }
@@ -144,41 +147,30 @@ impl CsePlugin {
         let title = document
             .select(&self.selectors.title)
             .next()
-            .map(|span| span.text().collect::<String>())
-            .unwrap_or_else(|| "No Title".to_string())
-            .trim()
+            .map(|span| span.text().collect::<String>().trim().to_string())
+            .ok_or_else(|| PluginError::parse::<Self>("Title element not found".to_string()))?;
+
+        let thumbnail = document
+            .select(&self.selectors.thumbnail)
+            .next()
+            .and_then(|img| img.value().attr("src"))
+            .unwrap_or_default()
             .to_string();
-
-        let created_at = {
-            let date_string = document
-                .select(&self.selectors.created_at)
-                .next()
-                .map(|element| element.text().collect::<String>())
-                .unwrap_or_default()
-                .trim()
-                .to_string();
-
-            let date_format = format_description!(
-                "작성일 [year repr:last_two]-[month]-[day] [hour repr:24]:[minute]"
-            );
-            let mut parsed = Parsed::new();
-            parsed
-                .parse_items(date_string.as_bytes(), date_format)
-                .unwrap();
-            let year = parsed.year_last_two().unwrap() as i32 + 2000;
-            parsed.set_year(year).unwrap();
-
-            OffsetDateTime::try_from(parsed).unwrap()
-        };
 
         let content = document
             .select(&self.selectors.content)
             .next()
             .unwrap()
             .child_elements()
-            .map(|p| p.text().collect::<String>())
+            .map(|p| p.text().collect::<String>().replace('\u{a0}', " "))
             .collect::<Vec<String>>()
             .join("\n");
+
+        let attachments = document
+            .select(&self.selectors.attachments)
+            .filter_map(|a| a.value().attr("href"))
+            .map(|s| s.to_string())
+            .collect();
 
         Ok(SsufidPost {
             id: metadata.id.clone(),
@@ -186,93 +178,51 @@ impl CsePlugin {
             author: metadata.author.clone(),
             title,
             category: vec!["공지".to_string()], // TODO?
-            created_at: metadata.created_at.clone(),
+            created_at: metadata.created_at,
             updated_at: None,
-            thumbnail: "".to_string(),
+            thumbnail,
             content,
-            attachments: vec![],
+            attachments,
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use scraper::{Html, Selector};
-    use time::{
-        Date,
-        macros::{format_description, offset},
-        parsing::Parsed,
-    };
-
-    use crate::{core::SsufidPlugin, plugins::cse::CsePlugin};
+    use super::*;
 
     #[tokio::test]
     async fn test_fetch_metadata() {
         let plugin = CsePlugin::new();
+
+        // 1 페이지의 게시글 메타데이터 목록 가져오기
         let metadata_list = plugin.fetch_metadata(1).await.unwrap();
-        for metadata in metadata_list {
+        assert!(!metadata_list.is_empty());
+
+        for metadata in &metadata_list {
             println!("{:?}", metadata);
         }
+
+        let first_metadata = &metadata_list[0];
+        assert!(!first_metadata.id.is_empty());
+        // assert!(!first_metadata.url.trim().starts_with("https"));
+        assert!(
+            first_metadata.created_at.year() >= 2025,
+            "Created date should be recent"
+        );
     }
 
     #[tokio::test]
-    async fn test_cse() {
-        let page_url = format!("{}/&page={}", CsePlugin::BASE_URL, 1);
+    async fn test_fetch_post() {
+        let plugin = CsePlugin::new();
 
-        let response = reqwest::get(page_url).await.unwrap();
-        let html = response.text().await.unwrap();
-        let document = Html::parse_document(&html);
+        // 1 페이지의 게시글 메타데이터 목록 가져오기
+        let metadata_list = plugin.fetch_metadata(1).await.unwrap();
+        assert!(!metadata_list.is_empty());
 
-        let table_selector = Selector::parse("#bo_list > div.notice_list > table > tody").unwrap();
-        let tr_selector = Selector::parse("tr").unwrap();
-        let table = document.select(&table_selector).next().unwrap();
+        let first_metadata = &metadata_list[0];
 
-        for a in table.select(&tr_selector) {
-            println!("{:?}", a);
-        }
-    }
-
-    #[tokio::test]
-    async fn test_content() {
-        let html = reqwest::get("https://cse.ssu.ac.kr/bbs/board.php?bo_table=notice&wr_id=4796")
-            .await
-            .unwrap()
-            .text()
-            .await
-            .unwrap();
-        let document = Html::parse_document(&html);
-        let created_at_selector =
-            Selector::parse("#bo_v_info > div.profile_info > div.profile_info_ct > strong.if_date")
-                .unwrap();
-
-        let created_at = {
-            let date_string = document
-                .select(&created_at_selector)
-                .next()
-                .map(|element| element.text().collect::<String>())
-                .unwrap_or_default()
-                .trim()
-                .to_string();
-            println!("date string: {}", date_string);
-            let date_format = format_description!("작성일 [year]-[month]-[day] [hour]:[minute]");
-            Date::parse(&date_string, &date_format)
-                .unwrap()
-                .midnight()
-                .assume_offset(offset!(+09:00))
-        };
-        println!("{:?}", created_at)
-    }
-
-    #[test]
-    fn test_format() {
-        let date_format = format_description!("[year repr:last_two]-[month]-[day]");
-        let date = "03-05-26";
-
-        let mut parsed = Parsed::new();
-        parsed.parse_items(date.as_bytes(), date_format).unwrap();
-        let year = parsed.year_last_two().unwrap() as i32 + 2000;
-        parsed.set_year(year).unwrap();
-        let res = Date::try_from(parsed).unwrap();
-        println!("{:?}", res);
+        let post = plugin.fetch_post(&first_metadata).await.unwrap();
+        assert!(!post.title.is_empty());
     }
 }
