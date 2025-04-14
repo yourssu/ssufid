@@ -62,14 +62,40 @@ impl SsufidPlugin for CsePlugin {
     const BASE_URL: &'static str = "https://cse.ssu.ac.kr/bbs/board.php?bo_table=notice";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        Ok(vec![])
+        let mut remain = posts_limit as usize;
+        let mut page = 1;
+        let mut ret = vec![];
+
+        while remain > 0 {
+            let metadata = self
+                .fetch_metadata(page)
+                .await?
+                .into_iter()
+                .take(remain)
+                .collect::<Vec<CseMetadata>>();
+            let mut posts = futures::future::join_all(metadata.iter().map(|m| self.fetch_post(m)))
+                .await
+                .into_iter()
+                .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
+
+            ret.append(&mut posts);
+            remain -= metadata.len();
+            page += 1;
+        }
+        Ok(ret)
+    }
+}
+
+impl Default for CsePlugin {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 impl CsePlugin {
     const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             selectors: Selectors::new(),
         }
@@ -224,5 +250,14 @@ mod tests {
 
         let post = plugin.fetch_post(&first_metadata).await.unwrap();
         assert!(!post.title.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_crawl() {
+        let posts_limit = 100;
+        let plugin = CsePlugin::new();
+        let posts = plugin.crawl(posts_limit).await.unwrap();
+        assert_eq!(posts.len(), posts_limit as usize);
+        // println!("{:#?}", posts);
     }
 }

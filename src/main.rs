@@ -5,7 +5,7 @@ use env_logger::{Builder, Env};
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
-    plugins::ssu_catch::SsuCatchPlugin,
+    plugins::{cse::CsePlugin, ssu_catch::SsuCatchPlugin},
 };
 use tokio::io::AsyncWriteExt;
 
@@ -80,6 +80,7 @@ async fn main() -> eyre::Result<()> {
 
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
+    Cse(CsePlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -92,6 +93,9 @@ impl SsufidPluginRegistry {
     ) -> eyre::Result<()> {
         match self {
             SsufidPluginRegistry::SsuCatch(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Cse(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -113,10 +117,16 @@ fn construct_tasks(
         .is_empty()
         .not()
         .then_some(HashSet::from_iter(options.exclude));
-    let tasks = [(
-        SsuCatchPlugin::IDENTIFIER,
-        SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
-    )];
+    let tasks = [
+        (
+            SsuCatchPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
+        ),
+        (
+            CsePlugin::IDENTIFIER,
+            SsufidPluginRegistry::Cse(CsePlugin::new()),
+        ),
+    ];
 
     if let Some(include) = include {
         tasks
