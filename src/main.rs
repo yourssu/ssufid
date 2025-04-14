@@ -78,6 +78,26 @@ async fn main() -> eyre::Result<()> {
     }
 }
 
+pub enum SsufidPluginRegistry {
+    SsuCatch(SsuCatchPlugin),
+}
+
+impl SsufidPluginRegistry {
+    async fn save_run(
+        self,
+        core: Arc<SsufidCore>,
+        out_dir: &Path,
+        posts_limit: u32,
+        retry_count: u32,
+    ) -> eyre::Result<()> {
+        match self {
+            SsufidPluginRegistry::SsuCatch(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+        }
+    }
+}
+
 fn construct_tasks(
     core: Arc<SsufidCore>,
     out_dir: &Path,
@@ -95,27 +115,45 @@ fn construct_tasks(
         .then_some(HashSet::from_iter(options.exclude));
     let tasks = [(
         SsuCatchPlugin::IDENTIFIER,
-        save_run(
-            core,
-            out_dir,
-            SsuCatchPlugin::new(),
-            options.posts_limit,
-            options.retry_count,
-        ),
+        SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
     )];
 
     if let Some(include) = include {
         tasks
             .into_iter()
-            .filter_map(|(id, task)| include.contains(id).then_some(task))
+            .filter_map(|(id, task)| {
+                include.contains(id).then_some(task.save_run(
+                    core.clone(),
+                    out_dir,
+                    options.posts_limit,
+                    options.retry_count,
+                ))
+            })
             .collect()
     } else if let Some(exclude) = exclude {
         tasks
             .into_iter()
-            .filter_map(|(id, task)| exclude.contains(id).not().then_some(task))
+            .filter_map(|(id, task)| {
+                exclude.contains(id).not().then_some(task.save_run(
+                    core.clone(),
+                    out_dir,
+                    options.posts_limit,
+                    options.retry_count,
+                ))
+            })
             .collect()
     } else {
-        tasks.into_iter().map(|(_, task)| task).collect()
+        tasks
+            .into_iter()
+            .map(|(_, task)| {
+                task.save_run(
+                    core.clone(),
+                    out_dir,
+                    options.posts_limit,
+                    options.retry_count,
+                )
+            })
+            .collect()
     }
 }
 
