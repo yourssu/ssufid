@@ -10,10 +10,12 @@ use crate::error::{Error, PluginError};
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     pub id: String,
+    pub url: String,
+    #[serde(default)]
+    pub author: String,
     pub title: String,
     #[serde(default)]
     pub category: Vec<String>,
-    pub url: String,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
@@ -204,9 +206,10 @@ mod tests {
         let mock = vec![
             SsufidPost {
                 id: "test-id".to_string(),
+                url: "https://example.com/test".to_string(),
+                author: "Test Author".to_string(),
                 title: "Test Title".to_string(),
                 category: vec!["Test Category".to_string()],
-                url: "https://example.com/test".to_string(),
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: None,
                 thumbnail: "https://example.com/thumbnail.jpg".to_string(),
@@ -215,9 +218,10 @@ mod tests {
             },
             SsufidPost {
                 id: "test-id".to_string(),
+                url: "https://example.com/test".to_string(),
+                author: "Test Author".to_string(),
                 title: "Test Title".to_string(),
                 category: vec!["Test Category".to_string()],
-                url: "https://example.com/test".to_string(),
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: Some(datetime!(2024-03-22 12:00:00 UTC)),
                 thumbnail: "https://example.com/thumbnail.jpg".to_string(),
@@ -257,9 +261,10 @@ mod tests {
         let old_entries = vec![
             SsufidPost {
                 id: "1".to_string(),
+                url: "http://example.com/1".to_string(),
+                author: "Old Author".to_string(),
                 title: "Old Title 1".to_string(),
                 category: vec!["Category 1".to_string()],
-                url: "http://example.com/1".to_string(),
                 created_at: now,
                 updated_at: None,
                 thumbnail: "http://example.com/thumbnail1.jpg".to_string(),
@@ -268,9 +273,10 @@ mod tests {
             },
             SsufidPost {
                 id: "2".to_string(),
+                url: "http://example.com/2".to_string(),
+                author: "Old Author".to_string(),
                 title: "Old Title 2".to_string(),
                 category: vec!["Category 2".to_string()],
-                url: "http://example.com/2".to_string(),
                 created_at: now,
                 updated_at: Some(now),
                 thumbnail: "http://example.com/thumbnail2.jpg".to_string(),
@@ -283,9 +289,10 @@ mod tests {
             // Case 1: 기존 포스트와 내용이 같은 경우
             SsufidPost {
                 id: "1".to_string(),
+                url: "http://example.com/1".to_string(),
+                author: "Old Author".to_string(),
                 title: "Old Title 1".to_string(),
                 category: vec!["Category 1".to_string()],
-                url: "http://example.com/1".to_string(),
                 created_at: now,
                 updated_at: None,
                 thumbnail: "http://example.com/thumbnail1.jpg".to_string(),
@@ -295,9 +302,10 @@ mod tests {
             // Case 2: 기존 포스트와 내용이 다른 경우
             SsufidPost {
                 id: "2".to_string(),
+                url: "http://example.com/2".to_string(),
+                author: "Old Author".to_string(),
                 title: "Updated Title 2".to_string(), // 제목 변경
                 category: vec!["Category 2".to_string()],
-                url: "http://example.com/2".to_string(),
                 created_at: now,
                 updated_at: None,
                 thumbnail: "http://example.com/thumbnail2.jpg".to_string(),
@@ -307,9 +315,10 @@ mod tests {
             // Case 3: 새로운 포스트인 경우
             SsufidPost {
                 id: "3".to_string(),
+                url: "http://example.com/3".to_string(),
+                author: "New Author".to_string(),
                 title: "New Title 3".to_string(),
                 category: vec!["Category 3".to_string()],
-                url: "http://example.com/3".to_string(),
                 created_at: now,
                 updated_at: None,
                 thumbnail: "http://example.com/thumbnail3.jpg".to_string(),
@@ -319,9 +328,10 @@ mod tests {
             // Case 4: 이미 updated_at이 설정된 경우
             SsufidPost {
                 id: "4".to_string(),
+                url: "http://example.com/4".to_string(),
+                author: "Old Author".to_string(),
                 title: "Title 4".to_string(),
                 category: vec!["Category 4".to_string()],
-                url: "http://example.com/4".to_string(),
                 created_at: now,
                 updated_at: Some(now),
                 thumbnail: "http://example.com/thumbnail4.jpg".to_string(),

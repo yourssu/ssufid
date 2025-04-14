@@ -13,11 +13,12 @@ struct Selectors {
     notice: Selector,
     li: Selector,
     url: Selector,
+    author: Selector,
     title: Selector,
-    created_at: Selector,
     category: Selector,
-    content: Selector,
+    created_at: Selector,
     thumbnail: Selector,
+    content: Selector,
     attachments: Selector,
     #[allow(dead_code)]
     last_page: Selector,
@@ -33,7 +34,7 @@ impl Selectors {
             notice: Selector::parse(".notice-lists").unwrap(),
             li: Selector::parse("li").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
-            last_page: Selector::parse(".next-btn-last").unwrap(),
+            author: Selector::parse(".notice_col4").unwrap(),
             title: Selector::parse("div.bg-white h2").unwrap(),
             category: Selector::parse("div.bg-white span.label").unwrap(),
             created_at: Selector::parse("div.bg-white > div.clearfix > div.float-left.mr-4")
@@ -41,6 +42,7 @@ impl Selectors {
             thumbnail: Selector::parse("div.bg-white img").unwrap(),
             content: Selector::parse("div.bg-white > div:not(.clearfix)").unwrap(),
             attachments: Selector::parse(".download-list a[download]").unwrap(),
+            last_page: Selector::parse(".next-btn-last").unwrap(),
         }
     }
 }
@@ -49,6 +51,7 @@ impl Selectors {
 struct SsuCatchMetadata {
     id: String,
     url: String,
+    author: String,
 }
 
 impl Default for SsuCatchPlugin {
@@ -114,7 +117,13 @@ impl SsuCatchPlugin {
                     return None;
                 }
 
-                Some(SsuCatchMetadata { id, url })
+                let author = li
+                    .select(&self.selectors.author)
+                    .next()
+                    .map(|element| element.text().collect::<String>().trim().to_string())
+                    .unwrap_or_default();
+
+                Some(SsuCatchMetadata { id, url, author })
             })
             .collect();
 
@@ -194,9 +203,10 @@ impl SsuCatchPlugin {
 
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
+            url: post_metadata.url.clone(),
+            author: post_metadata.author.clone(),
             title,
             category,
-            url: post_metadata.url.clone(),
             created_at,
             updated_at: None,
             thumbnail,
