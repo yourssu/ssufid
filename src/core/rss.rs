@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use rss::{
-    extension::{Extension, ExtensionBuilder},
     ChannelBuilder, ItemBuilder,
+    extension::{Extension, ExtensionBuilder},
 };
 use time::format_description::well_known::{Rfc2822, Rfc3339};
 
@@ -14,13 +14,10 @@ impl From<SsufidPost> for rss::Item {
     fn from(post: SsufidPost) -> Self {
         let mut builder = ItemBuilder::default();
 
-        let description = post
-            .content
-            .char_indices()
-            .nth(50)
-            .map_or_else(|| post.content.clone(), |(i, _)| {
-                format!("{}...", &post.content[..i])
-            });
+        let description = post.content.char_indices().nth(50).map_or_else(
+            || post.content.clone(),
+            |(i, _)| format!("{}...", &post.content[..i]),
+        );
 
         builder
             .title(post.title)
@@ -79,12 +76,15 @@ mod tests {
     fn test_ssufid_post_to_rss_item() {
         let post = SsufidPost {
             id: "test-id".to_string(),
-            title: "Test Title".to_string(),
-            category: "Test Category".to_string(),
             url: "https://example.com/test".to_string(),
+            author: "Test Author".to_string(),
+            title: "Test Title".to_string(),
+            category: vec!["Test Category".to_string()],
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: Some(datetime!(2024-03-27 12:00:00 UTC)),
+            thumbnail: "https://example.com/thumbnail.jpg".to_string(),
             content: "Test Content".to_string(),
+            attachments: vec![],
         };
 
         let rss_item: rss::Item = post.into();
@@ -110,12 +110,15 @@ mod tests {
     fn test_ssufid_site_data_to_rss_channel() {
         let post = SsufidPost {
             id: "test-id".to_string(),
-            title: "Test Post".to_string(),
-            category: "Test Category".to_string(),
             url: "https://example.com/post".to_string(),
+            author: "Test Author".to_string(),
+            title: "Test Post".to_string(),
+            category: vec!["Test Category".to_string()],
             created_at: datetime!(2024-03-22 12:00:00 UTC),
             updated_at: None,
+            thumbnail: "https://example.com/thumbnail.jpg".to_string(),
             content: "Test Content".to_string(),
+            attachments: vec![],
         };
 
         let site_data = SsufidSiteData {

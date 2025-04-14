@@ -13,10 +13,13 @@ struct Selectors {
     notice: Selector,
     li: Selector,
     url: Selector,
+    author: Selector,
     title: Selector,
-    created_at: Selector,
     category: Selector,
+    created_at: Selector,
+    thumbnail: Selector,
     content: Selector,
+    attachments: Selector,
     #[allow(dead_code)]
     last_page: Selector,
 }
@@ -31,12 +34,15 @@ impl Selectors {
             notice: Selector::parse(".notice-lists").unwrap(),
             li: Selector::parse("li").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
-            last_page: Selector::parse(".next-btn-last").unwrap(),
+            author: Selector::parse(".notice_col4").unwrap(),
             title: Selector::parse("div.bg-white h2").unwrap(),
             category: Selector::parse("div.bg-white span.label").unwrap(),
             created_at: Selector::parse("div.bg-white > div.clearfix > div.float-left.mr-4")
                 .unwrap(),
+            thumbnail: Selector::parse("div.bg-white img").unwrap(),
             content: Selector::parse("div.bg-white > div:not(.clearfix)").unwrap(),
+            attachments: Selector::parse(".download-list a[download]").unwrap(),
+            last_page: Selector::parse(".next-btn-last").unwrap(),
         }
     }
 }
@@ -45,6 +51,7 @@ impl Selectors {
 struct SsuCatchMetadata {
     id: String,
     url: String,
+    author: String,
 }
 
 impl Default for SsuCatchPlugin {
@@ -67,7 +74,7 @@ impl SsuCatchPlugin {
         &self,
         page: u32,
     ) -> Result<Vec<SsuCatchMetadata>, PluginError> {
-        let page_url = format!("{}/page/{}", Self::BASE_URL, page);
+        let page_url = format!("{}/{}/page/{}", Self::BASE_URL, "공지사항", page);
 
         let response = reqwest::get(page_url)
             .await
@@ -110,7 +117,13 @@ impl SsuCatchPlugin {
                     return None;
                 }
 
-                Some(SsuCatchMetadata { id, url })
+                let author = li
+                    .select(&self.selectors.author)
+                    .next()
+                    .map(|element| element.text().collect::<String>().trim().to_string())
+                    .unwrap_or_default();
+
+                Some(SsuCatchMetadata { id, url, author })
             })
             .collect();
 
@@ -140,9 +153,9 @@ impl SsuCatchPlugin {
 
         let category = document
             .select(&self.selectors.category)
-            .next()
             .map(|element| element.text().collect::<String>())
-            .unwrap_or_default();
+            .filter(|text| !text.is_empty())
+            .collect();
 
         let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
         let date_string = document
@@ -155,6 +168,13 @@ impl SsuCatchPlugin {
             .unwrap()
             .midnight()
             .assume_offset(offset!(+09:00));
+
+        let thumbnail = document
+            .select(&self.selectors.thumbnail)
+            .next()
+            .and_then(|element| element.value().attr("src"))
+            .unwrap_or_default()
+            .to_string();
 
         let raw_content = document
             .select(&self.selectors.content)
@@ -171,14 +191,27 @@ impl SsuCatchPlugin {
             .collect::<Vec<&str>>()
             .join("\n");
 
+        let attachments = document
+            .select(&self.selectors.attachments)
+            .filter_map(|element| {
+                element
+                    .value()
+                    .attr("href")
+                    .map(|href| format!("{}{}", Self::BASE_URL, href))
+            })
+            .collect();
+
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
+            url: post_metadata.url.clone(),
+            author: post_metadata.author.clone(),
             title,
             category,
-            url: post_metadata.url.clone(),
             created_at,
             updated_at: None,
+            thumbnail,
             content,
+            attachments,
         })
     }
 
@@ -208,7 +241,7 @@ impl SsufidPlugin for SsuCatchPlugin {
     const IDENTIFIER: &'static str = "scatch.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "https://scatch.ssu.ac.kr/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
+    const BASE_URL: &'static str = "https://scatch.ssu.ac.kr";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let pages = posts_limit / Self::POSTS_PER_PAGE + 1;
