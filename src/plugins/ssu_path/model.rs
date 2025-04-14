@@ -60,6 +60,7 @@ const UTC_OFFSET: time::UtcOffset = offset!(+9);
 
 impl SsuPathEntry {
     pub fn from_element(element: scraper::ElementRef) -> Result<Self, SsuPathPluginError> {
+        dbg!(element.text());
         let title_elem = element
             .select(&TITLE_SELECTOR)
             .next()
@@ -153,6 +154,7 @@ impl SsuPathEntry {
 
     fn as_date_tuple(str: &str) -> Result<(OffsetDateTime, OffsetDateTime), SsuPathPluginError> {
         let mut apply_durations = str.split("~").map(|s| {
+            dbg!(&s);
             PrimitiveDateTime::parse(s, DATE_FORMAT)
                 .unwrap()
                 .assume_offset(UTC_OFFSET)
