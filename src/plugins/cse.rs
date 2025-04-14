@@ -186,7 +186,7 @@ impl CsePlugin {
         let content = document
             .select(&self.selectors.content)
             .next()
-            .unwrap()
+            .ok_or_else(|| PluginError::parse::<Self>("Content element not found".to_string()))?
             .child_elements()
             .map(|p| p.text().collect::<String>().replace('\u{a0}', " "))
             .collect::<Vec<String>>()
