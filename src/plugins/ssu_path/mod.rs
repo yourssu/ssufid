@@ -1,9 +1,12 @@
 use std::sync::{Arc, LazyLock};
 
 use futures::{TryStreamExt, stream::FuturesUnordered};
+use log::info;
 use model::{SsuPathCourseTable, SsuPathEntry, SsuPathProgramTable, construct_content};
 use scraper::{Html, Selector};
 use sso::SsuSsoError;
+use url::Url;
+use utils::default_header;
 
 use crate::{
     PluginError,
@@ -15,7 +18,7 @@ pub mod sso;
 mod utils;
 
 pub enum SsuPathCredential {
-    Token(String),
+    Token(String, String),
     Password(String, String),
 }
 
@@ -66,7 +69,7 @@ impl SsuPathPlugin {
 
     async fn client(&self) -> Result<reqwest::Client, SsuPathPluginError> {
         Ok(match &self.credential {
-            SsuPathCredential::Token(token) => self.client_with_token(token).await,
+            SsuPathCredential::Token(id, token) => self.client_with_token(id, token).await,
             SsuPathCredential::Password(id, password) => {
                 self.client_with_password(id, password).await
             }
@@ -79,17 +82,50 @@ impl SsuPathPlugin {
         password: &str,
     ) -> Result<reqwest::Client, SsuSsoError> {
         let token = sso::obtain_ssu_sso_token(id, password).await?;
-        self.client_with_token(&token).await
+        self.client_with_token(id, &token).await
     }
 
-    async fn client_with_token(&self, token: &str) -> Result<reqwest::Client, SsuSsoError> {
+    async fn client_with_token(
+        &self,
+        id: &str,
+        token: &str,
+    ) -> Result<reqwest::Client, SsuSsoError> {
         let jar = Arc::new(reqwest::cookie::Jar::default());
         let client = reqwest::Client::builder()
-            .cookie_provider(jar.clone())
             .cookie_store(true)
+            .cookie_provider(jar.clone())
             .user_agent(utils::DEFAULT_USER_AGENT)
+            .default_headers(default_header())
             .build()?;
-        client.get(format!("https://path.ssu.ac.kr/comm/login/user/loginProc.do?rtnUrl=/index.do?paramStart=paramStart?sToken={token}")).send().await?;
+        let res = client.get("https://path.ssu.ac.kr/").send().await?;
+        let Some((_, rtn_url)) = res.url().query_pairs().find(|(k, _)| k == "rtnUrl") else {
+            return Err(SsuSsoError::CantLoadForm);
+        };
+        let res = client
+            .get(format!(
+                "https://path.ssu.ac.kr/comm/login/user/loginChk.do?rtnUrl={rtn_url}"
+            ))
+            .send()
+            .await?;
+        let Some((_, api_return_url)) = res.url().query_pairs().find(|(k, _)| k == "apiReturnUrl")
+        else {
+            return Err(SsuSsoError::CantLoadForm);
+        };
+        jar.add_cookie_str(
+            &format!("sToken={token}; Domain=.ssu.ac.kr; Path=/; secure"),
+            &"https://path.ssu.ac.kr".parse::<Url>().unwrap(),
+        );
+        info!("{api_return_url}?sToken={token}&sIdno={id}");
+        let res = client
+            .get(format!("{api_return_url}?sToken={token}&sIdno={id}"))
+            .header("Referer", "https://smartid.ssu.ac.kr/")
+            .send()
+            .await?;
+        if res.status() != reqwest::StatusCode::OK {
+            return Err(SsuSsoError::CantFindToken(
+                "Authorization failed".to_string(),
+            ));
+        }
         Ok(client)
     }
 }
@@ -106,6 +142,7 @@ impl SsufidPlugin for SsuPathPlugin {
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);
+        info!("Crawling {} pages", pages);
         let client = self.client().await?;
         let entries = (1..=pages)
             .map(|page| entries(&client, page))
@@ -135,6 +172,7 @@ async fn entries(
     page: usize,
 ) -> Result<Vec<SsuPathEntry>, SsuPathPluginError> {
     let url = format!("{PATH_LIST_URL}{page}");
+    info!("Crawling entries from {}", url);
     let response = client.get(url).send().await?.text().await?;
     let document = Html::parse_document(&response);
     document
@@ -150,6 +188,7 @@ async fn post(
     client: &reqwest::Client,
     entry: &SsuPathEntry,
 ) -> Result<SsufidPost, SsuPathPluginError> {
+    info!("Crawling entry {}", entry.id);
     let url = format!("{PATH_ENTRY_URL}{}", entry.id);
     let response = client.get(&url).send().await?.text().await?;
     let document = Html::parse_document(&response);
@@ -168,4 +207,22 @@ async fn post(
         thumbnail: entry.thumbnail.clone(),
         attachments: Vec::default(),
     })
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "Requires valid credentials"]
+    async fn test_authorization() {
+        dotenv::dotenv().ok();
+        let plugin = SsuPathPlugin::new(SsuPathCredential::Password(
+            std::env::var("SSU_ID").unwrap(),
+            std::env::var("SSU_PASSWORD").unwrap(),
+        ));
+        let client = plugin.client().await.unwrap();
+        let response = client.get("https://path.ssu.ac.kr/").send().await.unwrap();
+        assert_eq!(response.status(), reqwest::StatusCode::OK);
+    }
 }
