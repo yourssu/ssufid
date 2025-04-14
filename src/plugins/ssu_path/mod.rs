@@ -159,10 +159,13 @@ async fn post(
     Ok(SsufidPost {
         id: entry.id.clone(),
         title: program_table.title,
-        category: entry.label.clone(),
+        category: vec![entry.label.clone()],
         url,
         created_at: entry.apply_duration.0,
         content,
         updated_at: None,
+        author: entry.major_types.first().cloned().unwrap_or_default(),
+        thumbnail: entry.thumbnail.clone(),
+        attachments: Vec::default(),
     })
 }
