@@ -203,7 +203,7 @@ impl CsePlugin {
             url: metadata.url.clone(),
             author: metadata.author.clone(),
             title,
-            category: vec!["공지".to_string()], // TODO?
+            category: vec![],
             created_at: metadata.created_at,
             updated_at: None,
             thumbnail,
