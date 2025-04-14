@@ -1,6 +1,7 @@
 use scraper::{Html, Selector};
 use time::{
-    Date, OffsetDateTime, format_description,
+    Date, OffsetDateTime,
+    format_description::BorrowedFormatItem,
     macros::{format_description, offset},
     parsing::Parsed,
 };
@@ -11,15 +12,44 @@ use crate::{
     core::{SsufidPlugin, SsufidPost},
 };
 
+#[derive(Debug)]
+struct CseMetadata {
+    id: String,
+    url: String,
+    author: String,
+    created_at: time::OffsetDateTime,
+}
+
+struct Selectors {
+    // in the notice list page
+    table: Selector,
+    tr: Selector,
+    url: Selector,
+    author: Selector,
+    created_at: Selector,
+
+    // in the content page
+    title: Selector,
+    content: Selector,
+}
+
+impl Selectors {
+    fn new() -> Self {
+        Self {
+            table: Selector::parse("#bo_list > div.notice_list > table > tbody").unwrap(),
+            tr: Selector::parse("tr").unwrap(),
+            url: Selector::parse("td.td_subject > div > a").unwrap(),
+            author: Selector::parse("td.td_name.sv_use > span").unwrap(),
+            created_at: Selector::parse("td.td_datetime").unwrap(),
+            title: Selector::parse("#bo_v_title > span").unwrap(),
+            content: Selector::parse("#bo_v_con").unwrap(),
+        }
+    }
+}
+
 pub struct CsePlugin {
     selectors: Selectors,
 }
-
-// impl Default for CsePlugin {
-//     fn default() -> Self {
-//         CsePlugin::new()
-//     }
-// }
 
 impl SsufidPlugin for CsePlugin {
     const IDENTIFIER: &'static str = "cse.ssu.ac.kr/bachelor";
@@ -34,13 +64,15 @@ impl SsufidPlugin for CsePlugin {
 }
 
 impl CsePlugin {
+    const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
+
     fn new() -> Self {
         Self {
             selectors: Selectors::new(),
         }
     }
 
-    async fn fetch_page_posts_metadata(&self, page: u32) -> Result<Vec<CseMetadata>, PluginError> {
+    async fn fetch_metadata(&self, page: u32) -> Result<Vec<CseMetadata>, PluginError> {
         let page_url = format!("{}/&page={}", Self::BASE_URL, page);
 
         let html = reqwest::get(page_url)
@@ -55,7 +87,7 @@ impl CsePlugin {
         let notice_list = document
             .select(&self.selectors.table)
             .next()
-            .ok_or_else(|| PluginError::parse::<Self>("TODO".to_string()))?
+            .ok_or_else(|| PluginError::parse::<Self>("Table element not found".to_string()))?
             .select(&self.selectors.tr);
 
         let posts_metadata = notice_list
@@ -72,7 +104,27 @@ impl CsePlugin {
                     .find(|(key, _)| key == "wr_id")
                     .map(|(_, value)| value.to_string())?;
 
-                Some(CseMetadata { id, url })
+                let author = tr
+                    .select(&self.selectors.author)
+                    .next()
+                    .map(|span| span.text().collect::<String>().trim().to_string())?;
+
+                let created_at = {
+                    let date = tr
+                        .select(&self.selectors.created_at)
+                        .next()
+                        .map(|element| element.text().collect::<String>().trim().to_string())?;
+                    Date::parse(&date, Self::DATE_FORMAT)
+                        .ok()?
+                        .midnight()
+                        .assume_offset(offset!(+09:00))
+                };
+                Some(CseMetadata {
+                    id,
+                    url,
+                    author,
+                    created_at,
+                })
             })
             .collect::<Vec<CseMetadata>>();
 
@@ -130,44 +182,16 @@ impl CsePlugin {
 
         Ok(SsufidPost {
             id: metadata.id.clone(),
-            title,
-            category: "공지".to_string(), // TODO?
             url: metadata.url.clone(),
-            created_at,
+            author: metadata.author.clone(),
+            title,
+            category: vec!["공지".to_string()], // TODO?
+            created_at: metadata.created_at.clone(),
             updated_at: None,
+            thumbnail: "".to_string(),
             content,
+            attachments: vec![],
         })
-    }
-}
-
-#[derive(Debug)]
-struct CseMetadata {
-    id: String,
-    url: String,
-}
-
-struct Selectors {
-    table: Selector,
-    tr: Selector,
-    url: Selector,
-    title: Selector,
-    created_at: Selector,
-    content: Selector,
-}
-
-impl Selectors {
-    fn new() -> Self {
-        Self {
-            table: Selector::parse("#bo_list > div.notice_list > table > tbody").unwrap(),
-            tr: Selector::parse("tr").unwrap(),
-            url: Selector::parse("td.td_subject > div > a").unwrap(),
-            title: Selector::parse("#bo_v_title > span").unwrap(),
-            created_at: Selector::parse(
-                "#bo_v_info > div.profile_info > div.profile_info_ct > strong.if_date",
-            )
-            .unwrap(),
-            content: Selector::parse("#bo_v_con").unwrap(),
-        }
     }
 }
 
@@ -179,17 +203,15 @@ mod tests {
         macros::{format_description, offset},
         parsing::Parsed,
     };
-    use url::Url;
 
     use crate::{core::SsufidPlugin, plugins::cse::CsePlugin};
 
     #[tokio::test]
-    async fn test_fetch_page() {
+    async fn test_fetch_metadata() {
         let plugin = CsePlugin::new();
-        let metadata_list = plugin.fetch_page_posts_metadata(1).await.unwrap();
+        let metadata_list = plugin.fetch_metadata(1).await.unwrap();
         for metadata in metadata_list {
-            let post = plugin.fetch_post(&metadata).await.unwrap();
-            println!("{:?}", post);
+            println!("{:?}", metadata);
         }
     }
 
