@@ -153,7 +153,11 @@ where
                 })
             })
             .filter_map(|result: Result<CseMetadata, String>| {
-                result.inspect_err(|msg| warn!("{}", msg)).ok()
+                // 경고 메시지 모아서 출력
+                // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
+                result
+                    .inspect_err(|msg| warn!("[{}] {}", T::IDENTIFIER, msg))
+                    .ok()
             })
             .collect::<Vec<CseMetadata>>();
 
