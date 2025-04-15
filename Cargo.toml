@@ -46,4 +46,5 @@ env_logger = "0.11.8"
 serde_yaml = "0.9.34"
 
 [dev-dependencies]
+dotenv = "0.15.0"
 time = { version = "0.3.40", features = ["macros"] }
