@@ -280,8 +280,7 @@ mod tests {
         );
 
         // 학사 공지사항의 첫 게시글은 공지 카테고리 존재
-        assert!(first_metadata.category.is_some());
-        assert_eq!(first_metadata.category.clone().unwrap(), "공지");
+        assert!(matches!(first_metadata.category.as_ref(), Some(x) if x == "공지"));
     }
 
     #[tokio::test]
