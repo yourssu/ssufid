@@ -5,7 +5,7 @@ use env_logger::{Builder, Env};
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
-    plugins::{cse::CsePlugin, ssu_catch::SsuCatchPlugin},
+    plugins::{cse::bachelor::CseBachelorPlugin, ssu_catch::SsuCatchPlugin},
 };
 use tokio::io::AsyncWriteExt;
 
@@ -80,7 +80,7 @@ async fn main() -> eyre::Result<()> {
 
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
-    Cse(CsePlugin),
+    Cse(CseBachelorPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -123,8 +123,8 @@ fn construct_tasks(
             SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
         ),
         (
-            CsePlugin::IDENTIFIER,
-            SsufidPluginRegistry::Cse(CsePlugin::new()),
+            CseBachelorPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Cse(CseBachelorPlugin::new()),
         ),
     ];
 

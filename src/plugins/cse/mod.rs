@@ -19,7 +19,7 @@ struct CseMetadata {
     created_at: time::OffsetDateTime,
 }
 
-struct Selectors {
+struct CseSelectors {
     // in the notice list page
     table: Selector,
     tr: Selector,
@@ -34,7 +34,7 @@ struct Selectors {
     attachments: Selector,
 }
 
-impl Selectors {
+impl CseSelectors {
     fn new() -> Self {
         Self {
             table: Selector::parse("#bo_list > div.notice_list > table > tbody").unwrap(),
@@ -50,73 +50,38 @@ impl Selectors {
     }
 }
 
-pub struct CsePlugin {
-    selectors: Selectors,
+const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
+
+struct CseCrawler {
+    selectors: CseSelectors,
 }
 
-impl SsufidPlugin for CsePlugin {
-    const IDENTIFIER: &'static str = "cse.ssu.ac.kr/bachelor";
-    const TITLE: &'static str = "숭실대학교 컴퓨터학부 학사 공지사항";
-    const DESCRIPTION: &'static str =
-        "숭실대학교 컴퓨터학부 홈페이지의 학사 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "https://cse.ssu.ac.kr/bbs/board.php?bo_table=notice";
-
-    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        let mut remain = posts_limit as usize;
-        let mut page = 1;
-        let mut ret = vec![];
-
-        while remain > 0 {
-            let metadata = self
-                .fetch_metadata(page)
-                .await?
-                .into_iter()
-                .take(remain)
-                .collect::<Vec<CseMetadata>>();
-            let mut posts = futures::future::join_all(metadata.iter().map(|m| self.fetch_post(m)))
-                .await
-                .into_iter()
-                .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
-
-            ret.append(&mut posts);
-            remain -= metadata.len();
-            page += 1;
-        }
-        Ok(ret)
-    }
-}
-
-impl Default for CsePlugin {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl CsePlugin {
-    const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
-
-    pub fn new() -> Self {
+impl CseCrawler {
+    fn new() -> Self {
         Self {
-            selectors: Selectors::new(),
+            selectors: CseSelectors::new(),
         }
     }
 
-    async fn fetch_metadata(&self, page: u32) -> Result<Vec<CseMetadata>, PluginError> {
-        let page_url = format!("{}/&page={}", Self::BASE_URL, page);
+    async fn fetch_metadata<T: SsufidPlugin>(
+        &self,
+        page: u32,
+    ) -> Result<Vec<CseMetadata>, PluginError> {
+        let page_url = format!("{}/&page={}", T::BASE_URL, page);
 
         let html = reqwest::get(page_url)
             .await
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?
+            .map_err(|e| PluginError::request::<T>(e.to_string()))?
             .text()
             .await
-            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
+            .map_err(|e| PluginError::parse::<T>(e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
         let notice_list = document
             .select(&self.selectors.table)
             .next()
-            .ok_or_else(|| PluginError::parse::<Self>("Table element not found".to_string()))?
+            .ok_or_else(|| PluginError::parse::<T>("Table element not found".to_string()))?
             .select(&self.selectors.tr);
 
         let posts_metadata = notice_list
@@ -143,7 +108,7 @@ impl CsePlugin {
                         .select(&self.selectors.created_at)
                         .next()
                         .map(|element| element.text().collect::<String>().trim().to_string())?;
-                    Date::parse(&date, Self::DATE_FORMAT)
+                    Date::parse(&date, DATE_FORMAT)
                         .ok()?
                         .midnight()
                         .assume_offset(offset!(+09:00))
@@ -160,13 +125,16 @@ impl CsePlugin {
         Ok(posts_metadata)
     }
 
-    async fn fetch_post(&self, metadata: &CseMetadata) -> Result<SsufidPost, PluginError> {
+    async fn fetch_post<T: SsufidPlugin>(
+        &self,
+        metadata: &CseMetadata,
+    ) -> Result<SsufidPost, PluginError> {
         let html = reqwest::get(&metadata.url)
             .await
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?
+            .map_err(|e| PluginError::request::<T>(e.to_string()))?
             .text()
             .await
-            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
+            .map_err(|e| PluginError::parse::<T>(e.to_string()))?;
 
         let document = Html::parse_document(&html);
 
@@ -174,7 +142,7 @@ impl CsePlugin {
             .select(&self.selectors.title)
             .next()
             .map(|span| span.text().collect::<String>().trim().to_string())
-            .ok_or_else(|| PluginError::parse::<Self>("Title element not found".to_string()))?;
+            .ok_or_else(|| PluginError::parse::<T>("Title element not found".to_string()))?;
 
         let thumbnail = document
             .select(&self.selectors.thumbnail)
@@ -186,9 +154,9 @@ impl CsePlugin {
         let content = document
             .select(&self.selectors.content)
             .next()
-            .ok_or_else(|| PluginError::parse::<Self>("Content element not found".to_string()))?
+            .ok_or_else(|| PluginError::parse::<T>("Content element not found".to_string()))?
             .child_elements()
-            .map(|p| p.text().collect::<String>().replace('\u{a0}', " "))
+            .map(|p| p.text().collect::<String>().replace('\u{a0}', " ")) // &nbsp 제거
             .collect::<Vec<String>>()
             .join("\n");
 
@@ -213,16 +181,23 @@ impl CsePlugin {
     }
 }
 
+pub mod bachelor;
+
 #[cfg(test)]
 mod tests {
+    use crate::plugins::cse::bachelor::CseBachelorPlugin;
+
     use super::*;
 
     #[tokio::test]
-    async fn test_fetch_metadata() {
-        let plugin = CsePlugin::new();
+    async fn test_crawler_fetch_metadata() {
+        let crawler = CseCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
-        let metadata_list = plugin.fetch_metadata(1).await.unwrap();
+        let metadata_list = crawler
+            .fetch_metadata::<CseBachelorPlugin>(1)
+            .await
+            .unwrap();
         assert!(!metadata_list.is_empty());
 
         for metadata in &metadata_list {
@@ -239,25 +214,22 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_fetch_post() {
-        let plugin = CsePlugin::new();
+    async fn test_crawler_fetch_post() {
+        let crawler = CseCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
-        let metadata_list = plugin.fetch_metadata(1).await.unwrap();
+        let metadata_list = crawler
+            .fetch_metadata::<CseBachelorPlugin>(1)
+            .await
+            .unwrap();
         assert!(!metadata_list.is_empty());
 
         let first_metadata = &metadata_list[0];
 
-        let post = plugin.fetch_post(&first_metadata).await.unwrap();
+        let post = crawler
+            .fetch_post::<CseBachelorPlugin>(first_metadata)
+            .await
+            .unwrap();
         assert!(!post.title.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_crawl() {
-        let posts_limit = 100;
-        let plugin = CsePlugin::new();
-        let posts = plugin.crawl(posts_limit).await.unwrap();
-        assert_eq!(posts.len(), posts_limit as usize);
-        // println!("{:#?}", posts);
     }
 }
