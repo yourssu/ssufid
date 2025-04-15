@@ -1,3 +1,4 @@
+use log::{info, warn};
 use scraper::{Html, Selector};
 use time::{
     Date,
@@ -74,6 +75,7 @@ where
         let mut ret = vec![];
 
         while remain > 0 {
+            info!("[{}] page: {}", T::IDENTIFIER, page);
             let metadata = self
                 .fetch_metadata(page)
                 .await?
@@ -111,40 +113,47 @@ where
             .select(&self.selectors.tr);
 
         let posts_metadata = notice_list
-            .filter_map(|tr| {
+            .map(|tr| {
                 let url = tr
                     .select(&self.selectors.url)
                     .next()
-                    .and_then(|a| a.value().attr("href"))?
+                    .and_then(|a| a.value().attr("href"))
+                    .ok_or("URL not found")?
                     .to_string();
 
                 let id = Url::parse(&url)
-                    .ok()?
+                    .map_err(|_| format!("URL parse failed for {}", url))?
                     .query_pairs()
                     .find(|(key, _)| key == "wr_id")
-                    .map(|(_, value)| value.to_string())?;
+                    .map(|(_, value)| value.to_string())
+                    .ok_or(format!("ID is empty for URL: {}", url))?;
 
                 let author = tr
                     .select(&self.selectors.author)
                     .next()
-                    .map(|span| span.text().collect::<String>().trim().to_string())?;
+                    .map(|span| span.text().collect::<String>().trim().to_string())
+                    .ok_or(format!("Author element not found for ID: {}", id))?;
 
                 let created_at = {
                     let date = tr
                         .select(&self.selectors.created_at)
                         .next()
-                        .map(|element| element.text().collect::<String>().trim().to_string())?;
+                        .map(|element| element.text().collect::<String>().trim().to_string())
+                        .ok_or(format!("Date element not found for ID: {}", id))?;
                     Date::parse(&date, DATE_FORMAT)
-                        .ok()?
+                        .map_err(|_| format!("Date parse failed for {}", date))?
                         .midnight()
                         .assume_offset(offset!(+09:00))
                 };
-                Some(CseMetadata {
+                Ok(CseMetadata {
                     id,
                     url,
                     author,
                     created_at,
                 })
+            })
+            .filter_map(|result: Result<CseMetadata, String>| {
+                result.inspect_err(|msg| warn!("{}", msg)).ok()
             })
             .collect::<Vec<CseMetadata>>();
 
