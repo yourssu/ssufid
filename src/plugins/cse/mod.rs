@@ -58,7 +58,7 @@ const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[mont
 
 struct CseCrawler<T: SsufidPlugin> {
     selectors: CseSelectors,
-    _plugin_type: std::marker::PhantomData<T>,
+    _marker: std::marker::PhantomData<T>,
 }
 
 impl<T> CseCrawler<T>
@@ -68,7 +68,7 @@ where
     fn new() -> Self {
         Self {
             selectors: CseSelectors::new(),
-            _plugin_type: std::marker::PhantomData,
+            _marker: std::marker::PhantomData,
         }
     }
 
