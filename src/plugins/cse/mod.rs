@@ -63,6 +63,34 @@ impl CseCrawler {
         }
     }
 
+    async fn crawl<T: SsufidPlugin>(
+        &self,
+        posts_limit: u32,
+    ) -> Result<Vec<SsufidPost>, PluginError> {
+        let mut remain = posts_limit as usize;
+        let mut page = 1;
+        let mut ret = vec![];
+
+        while remain > 0 {
+            let metadata = self
+                .fetch_metadata::<T>(page)
+                .await?
+                .into_iter()
+                .take(remain)
+                .collect::<Vec<CseMetadata>>();
+            let mut posts =
+                futures::future::join_all(metadata.iter().map(|m| self.fetch_post::<T>(m)))
+                    .await
+                    .into_iter()
+                    .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
+
+            ret.append(&mut posts);
+            remain -= metadata.len();
+            page += 1;
+        }
+        Ok(ret)
+    }
+
     async fn fetch_metadata<T: SsufidPlugin>(
         &self,
         page: u32,
