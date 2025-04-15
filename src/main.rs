@@ -5,7 +5,13 @@ use env_logger::{Builder, Env};
 use futures::future::join_all;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
-    plugins::{cse::bachelor::CseBachelorPlugin, ssu_catch::SsuCatchPlugin},
+    plugins::{
+        cse::{
+            bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin,
+            graduate::CseGraduatePlugin,
+        },
+        ssu_catch::SsuCatchPlugin,
+    },
 };
 use tokio::io::AsyncWriteExt;
 
@@ -80,7 +86,9 @@ async fn main() -> eyre::Result<()> {
 
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
-    Cse(CseBachelorPlugin),
+    CseBachelor(CseBachelorPlugin),
+    CseGraduate(CseGraduatePlugin),
+    CseEmployment(CseEmploymentPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -95,7 +103,13 @@ impl SsufidPluginRegistry {
             SsufidPluginRegistry::SsuCatch(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
-            SsufidPluginRegistry::Cse(plugin) => {
+            SsufidPluginRegistry::CseBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::CseGraduate(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::CseEmployment(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -124,7 +138,15 @@ fn construct_tasks(
         ),
         (
             CseBachelorPlugin::IDENTIFIER,
-            SsufidPluginRegistry::Cse(CseBachelorPlugin::new()),
+            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::new()),
+        ),
+        (
+            CseGraduatePlugin::IDENTIFIER,
+            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::new()),
+        ),
+        (
+            CseEmploymentPlugin::IDENTIFIER,
+            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::new()),
         ),
     ];
 

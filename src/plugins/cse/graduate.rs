@@ -1,0 +1,73 @@
+use crate::{
+    PluginError,
+    core::{SsufidPlugin, SsufidPost},
+};
+
+use super::{CseCrawler, CseMetadata};
+
+pub struct CseGraduatePlugin {
+    crawler: CseCrawler,
+}
+
+impl SsufidPlugin for CseGraduatePlugin {
+    const IDENTIFIER: &'static str = "cse.ssu.ac.kr/graduate";
+    const TITLE: &'static str = "숭실대학교 컴퓨터학부 대학원 공지사항";
+    const DESCRIPTION: &'static str =
+        "숭실대학교 컴퓨터학부 홈페이지의 대학원 공지사항을 제공합니다.";
+    const BASE_URL: &'static str = "https://cse.ssu.ac.kr/bbs/board.php?bo_table=gra_notice";
+
+    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        let mut remain = posts_limit as usize;
+        let mut page = 1;
+        let mut ret = vec![];
+
+        while remain > 0 {
+            let metadata = self
+                .crawler
+                .fetch_metadata::<Self>(page)
+                .await?
+                .into_iter()
+                .take(remain)
+                .collect::<Vec<CseMetadata>>();
+            let mut posts = futures::future::join_all(
+                metadata.iter().map(|m| self.crawler.fetch_post::<Self>(m)),
+            )
+            .await
+            .into_iter()
+            .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
+
+            ret.append(&mut posts);
+            remain -= metadata.len();
+            page += 1;
+        }
+        Ok(ret)
+    }
+}
+
+impl Default for CseGraduatePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CseGraduatePlugin {
+    pub fn new() -> Self {
+        Self {
+            crawler: CseCrawler::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_crawl() {
+        let posts_limit = 100;
+        let plugin = CseGraduatePlugin::new();
+        let posts = plugin.crawl(posts_limit).await.unwrap();
+        assert_eq!(posts.len(), posts_limit as usize);
+        // println!("{:#?}", posts);
+    }
+}
