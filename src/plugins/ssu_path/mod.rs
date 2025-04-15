@@ -2,7 +2,10 @@ use std::sync::{Arc, LazyLock};
 
 use futures::{TryStreamExt, stream::FuturesUnordered};
 use log::info;
-use model::{SsuPathCourseTable, SsuPathEntry, SsuPathProgramTable, construct_content};
+use model::{
+    SsuPathProgram, SsuPathProgramKind, construct_content,
+    table::{SsuPathCourseTable, SsuPathDivisionTable, SsuPathProgramTable},
+};
 use scraper::{Html, Selector};
 use sso::SsuSsoError;
 use url::Url;
@@ -141,6 +144,11 @@ impl SsufidPlugin for SsuPathPlugin {
         "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        info!(
+            "Crawling {} with {} posts limit",
+            SsuPathPlugin::IDENTIFIER,
+            posts_limit
+        );
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);
         info!("Crawling {} pages", pages);
         let client = self.client().await?;
@@ -170,15 +178,15 @@ static ENTRIES_SELECTOR: LazyLock<Selector> =
 async fn entries(
     client: &reqwest::Client,
     page: usize,
-) -> Result<Vec<SsuPathEntry>, SsuPathPluginError> {
+) -> Result<Vec<SsuPathProgram>, SsuPathPluginError> {
     let url = format!("{PATH_LIST_URL}{page}");
     info!("Crawling entries from {}", url);
     let response = client.get(url).send().await?.text().await?;
     let document = Html::parse_document(&response);
     document
         .select(&ENTRIES_SELECTOR)
-        .map(SsuPathEntry::from_element)
-        .collect::<Result<Vec<SsuPathEntry>, SsuPathPluginError>>()
+        .map(SsuPathProgram::from_element)
+        .collect::<Result<Vec<SsuPathProgram>, SsuPathPluginError>>()
 }
 
 const PATH_ENTRY_URL: &str =
@@ -186,25 +194,34 @@ const PATH_ENTRY_URL: &str =
 
 async fn post(
     client: &reqwest::Client,
-    entry: &SsuPathEntry,
+    program: &SsuPathProgram,
 ) -> Result<SsufidPost, SsuPathPluginError> {
-    info!("Crawling entry {}", entry.id);
-    let url = format!("{PATH_ENTRY_URL}{}", entry.id);
+    info!("Crawling program {}", program.id);
+    let url = format!("{PATH_ENTRY_URL}{}", program.id);
     let response = client.get(&url).send().await?.text().await?;
     let document = Html::parse_document(&response);
     let program_table = SsuPathProgramTable::from_document(&document)?;
-    let course_table = SsuPathCourseTable::from_document(&document)?;
-    let content = construct_content(&program_table, &course_table);
+    let course_table = match program.kind {
+        SsuPathProgramKind::Single { .. } => Some(SsuPathCourseTable::from_document(&document)?),
+        _ => None,
+    };
+    let division_table = match program.kind {
+        SsuPathProgramKind::Division { .. } => {
+            Some(SsuPathDivisionTable::from_document(&document)?)
+        }
+        _ => None,
+    };
+    let content = construct_content(&program_table, &course_table, &division_table);
     Ok(SsufidPost {
-        id: entry.id.clone(),
+        id: program.id.clone(),
         title: program_table.title,
-        category: vec![entry.label.clone()],
+        category: vec![program.label.clone()],
         url,
-        created_at: entry.apply_duration.0,
+        created_at: program.create_at(),
         content,
         updated_at: None,
-        author: entry.major_types.first().cloned().unwrap_or_default(),
-        thumbnail: entry.thumbnail.clone(),
+        author: program.major_types.first().cloned().unwrap_or_default(),
+        thumbnail: program.thumbnail.clone(),
         attachments: Vec::default(),
     })
 }
