@@ -241,7 +241,7 @@ mod tests {
 
         let first_metadata = &metadata_list[0];
         assert!(!first_metadata.id.is_empty());
-        // assert!(!first_metadata.url.trim().starts_with("https"));
+        assert!(first_metadata.url.trim().starts_with("https"));
         assert!(
             first_metadata.created_at.year() >= 2025,
             "Created date should be recent"
@@ -258,8 +258,7 @@ mod tests {
 
         let first_metadata = &metadata_list[0];
 
-        #[allow(clippy::needless_borrow)]
-        let post = crawler.fetch_post(&first_metadata).await.unwrap();
+        let post = crawler.fetch_post(first_metadata).await.unwrap();
         assert!(!post.title.is_empty());
     }
 }
