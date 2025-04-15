@@ -109,7 +109,9 @@ where
         let notice_list = document
             .select(&self.selectors.table)
             .next()
-            .ok_or_else(|| PluginError::parse::<T>("Table element not found".to_string()))?
+            .ok_or(PluginError::parse::<T>(
+                "Table element not found".to_string(),
+            ))?
             .select(&self.selectors.tr);
 
         let posts_metadata = notice_list
@@ -178,7 +180,9 @@ where
             .select(&self.selectors.title)
             .next()
             .map(|span| span.text().collect::<String>().trim().to_string())
-            .ok_or_else(|| PluginError::parse::<T>("Title element not found".to_string()))?;
+            .ok_or(PluginError::parse::<T>(
+                "Title element not found".to_string(),
+            ))?;
 
         let thumbnail = document
             .select(&self.selectors.thumbnail)
@@ -190,7 +194,9 @@ where
         let content = document
             .select(&self.selectors.content)
             .next()
-            .ok_or_else(|| PluginError::parse::<T>("Content element not found".to_string()))?
+            .ok_or(PluginError::parse::<T>(
+                "Content element not found".to_string(),
+            ))?
             .child_elements()
             .map(|p| p.text().collect::<String>().replace('\u{a0}', " ")) // &nbsp 제거
             .collect::<Vec<String>>()
