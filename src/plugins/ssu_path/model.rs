@@ -1,32 +1,56 @@
+pub mod table;
+
 use std::{collections::BTreeMap, sync::LazyLock};
 
-use scraper::{ElementRef, Html, Selector};
+use scraper::{ElementRef, Selector};
 use serde::Deserialize;
 use serde_yaml::Mapping;
-use time::{
-    OffsetDateTime, PrimitiveDateTime,
-    macros::{format_description, offset},
-};
+use table::{SsuPathCourseTable, SsuPathProgramTable};
+use time::OffsetDateTime;
 
 use crate::{
     PluginError,
     plugins::ssu_path::{SsuPathPlugin, utils::ElementRefExt as _},
 };
 
-use super::SsuPathPluginError;
+use super::{
+    SsuPathPluginError,
+    utils::{OptionExt, ParseDateRange},
+};
 
-pub struct SsuPathEntry {
+pub struct SsuPathProgramDivision {
+    pub title: String,
+    pub apply_duration: (OffsetDateTime, OffsetDateTime),
+    pub course_duration: (OffsetDateTime, OffsetDateTime),
+    pub applier: u32,
+    pub awaiter: u32,
+    pub total: u32,
+    pub location: String,
+}
+
+pub enum SsuPathProgramKind {
+    Single {
+        apply_duration: (OffsetDateTime, OffsetDateTime),
+        course_duration: (OffsetDateTime, OffsetDateTime),
+        miles: u32,
+        applier: u32,
+        awaiter: u32,
+        total: u32,
+    },
+    Division(Vec<SsuPathProgramDivision>),
+}
+
+pub struct SsuPathProgram {
     pub id: String,
     pub thumbnail: String,
     pub title: String,
     pub description: String,
     pub label: String,
     pub major_types: Vec<String>,
-    pub apply_duration: (OffsetDateTime, OffsetDateTime),
-    pub course_duration: (OffsetDateTime, OffsetDateTime),
     pub target: String,
     pub user_type: String,
     pub competencies: Vec<String>,
+    pub kind: SsuPathProgramKind,
 }
 
 #[derive(Deserialize)]
@@ -44,23 +68,21 @@ static LABEL_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse(".label_box").unwrap());
 static MAJOR_TYPE_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse(".major_type > li").unwrap());
-static APPLY_DURATION_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".info_wrap > dl:first-child > dd").unwrap());
-static COURSE_DURATION_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".info_wrap > dl:nth-child(2) > dd").unwrap());
-static TARGET_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".info_wrap > dl:nth-child(3) > dd").unwrap());
-static USER_TYPE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".info_wrap > dl:nth-child(4) > dd").unwrap());
+static INFOS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".info_wrap dl").unwrap());
+static DESC_INFOS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".etc_cont dl").unwrap());
 static COMPETENCIES_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("li.cabil dd > span").unwrap());
-const DATE_FORMAT: &[::time::format_description::BorrowedFormatItem<'_>] =
-    format_description!("[year].[month].[day] [hour]:[minute]");
-const UTC_OFFSET: time::UtcOffset = offset!(+9);
+static CLASSES_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".class_list > .class_cont").unwrap());
+static CLASSES_TITLE_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse(".tit").unwrap());
+static CLASSES_DESCS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("dl").unwrap());
 
-impl SsuPathEntry {
+impl SsuPathProgram {
     pub fn from_element(element: scraper::ElementRef) -> Result<Self, SsuPathPluginError> {
-        dbg!(element.text());
         let title_elem = element
             .select(&TITLE_SELECTOR)
             .next()
@@ -86,218 +108,197 @@ impl SsuPathEntry {
         let description = element
             .select(&DESC_SELECTOR)
             .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse description of entry".to_string(),
-            )))?
-            .to_string("");
+            .ok_or_parse_err("Cannot parse description of entry".to_string())?;
         let label = element
             .select(&LABEL_SELECTOR)
             .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse label of entry".to_string(),
-            )))?
-            .to_string("");
+            .ok_or_parse_err("Cannot parse label of entry".to_string())?;
         let major_types = element
             .select(&MAJOR_TYPE_SELECTOR)
             .map(|e| e.to_string(""))
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>();
-        let apply_duration_str = element
-            .select(&APPLY_DURATION_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse apply duration of entry".to_string(),
-            )))?
-            .to_string("");
-        let apply_duration = Self::as_date_tuple(&apply_duration_str)?;
-        let course_duration_str = element
-            .select(&COURSE_DURATION_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse course duration of entry".to_string(),
-            )))?
-            .to_string("");
-        let course_duration = Self::as_date_tuple(&course_duration_str)?;
-        let target = element
-            .select(&TARGET_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse target of entry".to_string(),
-            )))?
-            .to_string("");
-        let user_type = element
-            .select(&USER_TYPE_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse user type of entry".to_string(),
-            )))?
-            .to_string("");
+        let info_map = element
+            .select(&INFOS_SELECTOR)
+            .filter_map(Self::dl_to_pair)
+            .collect::<BTreeMap<String, String>>();
+        let target = info_map
+            .get("신청대상")
+            .cloned()
+            .ok_or_parse_err("Cannot parse target of entry".to_string())?;
+        let user_type = info_map
+            .get("신청신분")
+            .cloned()
+            .ok_or_parse_err("Cannot parse user type of entry".to_string())?;
         let competencies = element
             .select(&COMPETENCIES_SELECTOR)
             .map(|e| e.to_string(""))
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>();
-        Ok(Self {
-            id,
-            thumbnail,
+        let mut classes = element.select(&CLASSES_SELECTOR).peekable();
+        if classes.peek().is_none() {
+            let apply_duration = info_map
+                .get("신청기간")
+                .cloned()
+                .ok_or_parse_err("Cannot parse apply duration of entry".to_string())?
+                .parse_date_range()?;
+            let course_duration = info_map
+                .get("교육기간")
+                .cloned()
+                .ok_or_parse_err("Cannot parse course duration of entry".to_string())?
+                .parse_date_range()?;
+            let desc_info_map = element
+                .select(&DESC_INFOS_SELECTOR)
+                .filter_map(Self::dl_to_pair)
+                .collect::<BTreeMap<String, String>>();
+            let miles = desc_info_map
+                .get("마일리지")
+                .cloned()
+                .ok_and_parse_u32("Cannot parse miles of entry".to_string())?;
+            let applier = desc_info_map
+                .get("신청자")
+                .cloned()
+                .ok_and_parse_u32("Cannot parse applier of entry".to_string())?;
+            let awaiter = desc_info_map
+                .get("대기자")
+                .cloned()
+                .ok_and_parse_u32("Cannot parse awaiter of entry".to_string())?;
+            let total = desc_info_map
+                .get("모집정원")
+                .cloned()
+                .ok_and_parse_u32("Cannot parse total of entry".to_string())
+                .inspect_err(|_| {
+                    dbg!(&title, &desc_info_map);
+                })?;
+            Ok(Self {
+                id,
+                thumbnail,
+                title,
+                description,
+                label,
+                major_types,
+                target,
+                user_type,
+                competencies,
+                kind: SsuPathProgramKind::Single {
+                    apply_duration,
+                    course_duration,
+                    miles,
+                    applier,
+                    awaiter,
+                    total,
+                },
+            })
+        } else {
+            let classes = classes
+                .map(Self::parse_division)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Self {
+                id,
+                thumbnail,
+                title,
+                description,
+                label,
+                major_types,
+                target,
+                user_type,
+                competencies,
+                kind: SsuPathProgramKind::Division(classes),
+            })
+        }
+    }
+
+    fn parse_division(elem: ElementRef) -> Result<SsuPathProgramDivision, SsuPathPluginError> {
+        let title = elem
+            .select(&CLASSES_TITLE_SELECTOR)
+            .next()
+            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
+                "Cannot parse title of division".to_string(),
+            )))?
+            .to_string("");
+        let desc_map = elem
+            .select(&CLASSES_DESCS_SELECTOR)
+            .filter_map(Self::dl_to_pair)
+            .collect::<BTreeMap<String, String>>();
+        let apply_duration = desc_map
+            .get("신청기간")
+            .cloned()
+            .ok_or_parse_err("Cannot parse apply duration of entry".to_string())?
+            .parse_date_range()?;
+        let course_duration = desc_map
+            .get("운영기간")
+            .cloned()
+            .ok_or_parse_err("Cannot parse course duration of entry".to_string())?
+            .parse_date_range()?;
+        let applier = desc_map
+            .get("신청자")
+            .cloned()
+            .ok_and_parse_u32("Cannot parse applier of entry".to_string())?;
+        let awaiter = desc_map
+            .get("대기자")
+            .cloned()
+            .ok_and_parse_u32("Cannot parse awaiter of entry".to_string())?;
+        let total = desc_map
+            .get("모집정원")
+            .cloned()
+            .ok_and_parse_u32("Cannot parse total of entry".to_string())
+            .inspect_err(|_| {
+                dbg!(&title, &desc_map);
+            })?;
+        let location = desc_map
+            .get("교육장소")
+            .cloned()
+            .ok_or_parse_err("Cannot parse location of entry".to_string())?;
+        Ok(SsuPathProgramDivision {
             title,
-            description,
-            label,
-            major_types,
             apply_duration,
             course_duration,
-            target,
-            user_type,
-            competencies,
+            applier,
+            awaiter,
+            total,
+            location,
         })
     }
 
-    fn as_date_tuple(str: &str) -> Result<(OffsetDateTime, OffsetDateTime), SsuPathPluginError> {
-        let mut apply_durations = str.split("~").map(|s| {
-            dbg!(&s);
-            PrimitiveDateTime::parse(s, DATE_FORMAT)
-                .unwrap()
-                .assume_offset(UTC_OFFSET)
-        });
-        let apply_duration = apply_durations
-            .next()
-            .and_then(|d| apply_durations.next().map(|e| (d, e)));
-        apply_duration.ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-            "Cannot parse apply duration of entry".to_string(),
-        )))
-    }
-}
-
-type WeekName = String;
-
-pub struct SsuPathProgramTable {
-    pub title: String,
-    pub content: String,
-    pub info: BTreeMap<String, String>,
-}
-
-static PROGRAM_TITLE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("#tilesContent > div.table_top:nth-child(2) > h4").unwrap());
-
-static PROGRAM_TABLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse("#tilesContent > div.table_top:nth-child(2) + .table_wrap > table > tbody")
-        .unwrap()
-});
-
-impl SsuPathProgramTable {
-    pub fn from_document(document: &Html) -> Result<Self, SsuPathPluginError> {
-        let title = document
-            .select(&PROGRAM_TITLE_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse title of content".to_string(),
-            )))?
-            .to_string("");
-
-        let table = document
-            .select(&PROGRAM_TABLE_SELECTOR)
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot find program table of content".to_string(),
-            )))?;
-        let mut info = parse_table(table)?;
-        let content = info.remove("프로그램 주요내용").unwrap().to_string();
-        Ok(Self {
-            title,
-            content,
-            info,
-        })
-    }
-}
-
-pub struct SsuPathCourseTable {
-    pub overview: BTreeMap<String, String>,
-    pub weeks: Vec<(WeekName, BTreeMap<String, String>)>,
-}
-
-static COURSE_TABLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse("#tilesContent > div.table_top:nth-child(4) + .table_wrap > table > tbody")
-        .unwrap()
-});
-
-static WEEK_TABLES_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse(
-        "#tilesContent > div.table_top:nth-child(4) + .table_wrap ~ .table_wrap > table > tbody",
-    )
-    .unwrap()
-});
-
-impl SsuPathCourseTable {
-    pub fn from_document(document: &Html) -> Result<Self, SsuPathPluginError> {
-        let overview_elem =
-            document
-                .select(&COURSE_TABLE_SELECTOR)
-                .next()
-                .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                    "Cannot find course table of content".to_string(),
-                )))?;
-        let overview = parse_table(overview_elem)?;
-        let weeks = document
-            .select(&WEEK_TABLES_SELECTOR)
-            .map(Self::parse_week_table)
-            .collect::<Result<Vec<_>, SsuPathPluginError>>()?;
-        Ok(Self { overview, weeks })
+    fn dl_to_pair(elem: ElementRef) -> Option<(String, String)> {
+        let mut iter = elem.child_elements();
+        let key = iter.next().map(|elem| elem.to_string(""))?;
+        let value = iter.next().map(|elem| elem.to_string(""))?;
+        Some((key, value))
     }
 
-    fn parse_week_table(
-        table: ElementRef,
-    ) -> Result<(WeekName, BTreeMap<String, String>), SsuPathPluginError> {
-        let week_row_elem =
-            table
-                .child_elements()
-                .next()
-                .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                    "Cannot find first row".to_string(),
-                )))?;
-        let week_name = week_row_elem
-            .child_elements()
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot find first column".to_string(),
-            )))?
-            .to_string("");
-        let entry_iter = table
-            .child_elements()
-            .flat_map(|tr| {
-                if tr.attr("class").unwrap_or("") == "first" {
-                    tr.child_elements()
-                        .skip(1)
-                        .step_by(2)
-                        .zip(tr.child_elements().skip(2).step_by(2))
-                        .collect::<Vec<(ElementRef, ElementRef)>>()
-                } else {
-                    tr.child_elements()
-                        .step_by(2)
-                        .zip(tr.child_elements().skip(1).step_by(2))
-                        .collect::<Vec<(ElementRef, ElementRef)>>()
-                }
-            })
-            .map(|(ke, ve)| {
-                let key = ke.to_string("");
-                let value = ve.to_string("");
-                (key, value)
-            });
-        Ok((week_name, BTreeMap::from_iter(entry_iter)))
+    pub(super) fn create_at(&self) -> OffsetDateTime {
+        match &self.kind {
+            SsuPathProgramKind::Single { apply_duration, .. } => apply_duration.0,
+            SsuPathProgramKind::Division(divisions) => {
+                divisions.first().map(|d| d.apply_duration.0).unwrap()
+            }
+        }
     }
 }
 
 pub fn construct_content(
     program_table: &SsuPathProgramTable,
-    course_table: &SsuPathCourseTable,
+    course_table: &Option<SsuPathCourseTable>,
+    division_table: &Option<table::SsuPathDivisionTable>,
 ) -> String {
     let mut frontmatters = String::new();
     frontmatters.push_str(&serde_yaml::to_string(&program_table.info).unwrap());
     frontmatters.push('\n');
-    frontmatters.push_str(&serde_yaml::to_string(&course_table.overview).unwrap());
-    for (week_name, week_table) in &course_table.weeks {
+    if let Some(course_table) = course_table {
+        frontmatters.push_str(&serde_yaml::to_string(&course_table.overview).unwrap());
+        for (week_name, week_table) in &course_table.weeks {
+            let val = serde_yaml::Value::Mapping(Mapping::from_iter([(
+                serde_yaml::to_value(week_name).unwrap(),
+                serde_yaml::to_value(week_table).unwrap(),
+            )]));
+            frontmatters.push_str(&serde_yaml::to_string(&val).unwrap());
+        }
+    }
+    if let Some(division_table) = division_table {
         let val = serde_yaml::Value::Mapping(Mapping::from_iter([(
-            serde_yaml::to_value(week_name).unwrap(),
-            serde_yaml::to_value(week_table).unwrap(),
+            serde_yaml::to_value("분반").unwrap(),
+            serde_yaml::to_value(&division_table.rows).unwrap(),
         )]));
         frontmatters.push_str(&serde_yaml::to_string(&val).unwrap());
     }
@@ -307,20 +308,4 @@ pub fn construct_content(
         frontmatters, program_table.content
     ));
     content
-}
-
-fn parse_table(table: ElementRef) -> Result<BTreeMap<String, String>, SsuPathPluginError> {
-    let entry_iter = table
-        .child_elements()
-        .flat_map(|tr| {
-            tr.child_elements()
-                .step_by(2)
-                .zip(tr.child_elements().skip(1))
-        })
-        .map(|(ke, ve)| {
-            let key = ke.to_string("");
-            let value = ve.to_string("");
-            (key, value)
-        });
-    Ok(BTreeMap::from_iter(entry_iter))
 }
