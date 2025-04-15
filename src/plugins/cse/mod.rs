@@ -126,7 +126,7 @@ where
                 let id = Url::parse(&url)
                     .map_err(|_| format!("URL parse failed for {}", url))?
                     .query_pairs()
-                    .find(|(key, _)| key == "wr_id")
+                    .find(|(key, value)| key == "wr_id" && !value.is_empty())
                     .map(|(_, value)| value.to_string())
                     .ok_or(format!("ID is empty for URL: {}", url))?;
 
