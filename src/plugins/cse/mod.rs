@@ -14,6 +14,7 @@ use crate::{
 
 #[derive(Debug)]
 struct CseMetadata {
+    category: Option<String>,
     id: String,
     url: String,
     author: String,
@@ -27,6 +28,7 @@ struct CseSelectors {
     url: Selector,
     author: Selector,
     created_at: Selector,
+    category: Selector,
 
     // in the content page
     title: Selector,
@@ -43,6 +45,7 @@ impl CseSelectors {
             url: Selector::parse("td.td_subject > div > a").unwrap(),
             author: Selector::parse("td.td_name.sv_use > span").unwrap(),
             created_at: Selector::parse("td.td_datetime").unwrap(),
+            category: Selector::parse("td.td_num2 > p").unwrap(),
             title: Selector::parse("#bo_v_title > span").unwrap(),
             thumbnail: Selector::parse("#bo_v_con img").unwrap(),
             content: Selector::parse("#bo_v_con").unwrap(),
@@ -116,6 +119,11 @@ where
 
         let posts_metadata = notice_list
             .map(|tr| {
+                let category = tr
+                    .select(&self.selectors.category)
+                    .next()
+                    .map(|p| p.text().collect::<String>().trim().to_string());
+
                 let url = tr
                     .select(&self.selectors.url)
                     .next()
@@ -148,6 +156,7 @@ where
                         .assume_offset(offset!(+09:00))
                 };
                 Ok(CseMetadata {
+                    category,
                     id,
                     url,
                     author,
@@ -213,7 +222,7 @@ where
             url: metadata.url.clone(),
             author: metadata.author.clone(),
             title,
-            category: vec![],
+            category: metadata.category.clone().map_or(vec![], |c| vec![c]),
             created_at: metadata.created_at,
             updated_at: None,
             thumbnail,
@@ -252,6 +261,10 @@ mod tests {
             first_metadata.created_at.year() >= 2025,
             "Created date should be recent"
         );
+
+        // 학사 공지사항의 첫 게시글은 공지 카테고리 존재
+        assert!(first_metadata.category.is_some());
+        assert_eq!(first_metadata.category.clone().unwrap(), "공지");
     }
 
     #[tokio::test]
