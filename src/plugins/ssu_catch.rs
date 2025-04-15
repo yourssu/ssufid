@@ -263,7 +263,7 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
         let post_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
-            // info!("Crawling post content for ID: {}", metadata.id);
+            info!("Crawling post content for ID: {}", metadata.id);
             self.fetch_post(metadata)
         }))
         .await;
