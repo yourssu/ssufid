@@ -1,5 +1,6 @@
 use log::{info, warn};
 use scraper::{Html, Selector};
+use thiserror::Error;
 use time::{
     Date,
     format_description::BorrowedFormatItem,
@@ -52,6 +53,22 @@ impl CseSelectors {
             attachments: Selector::parse("#bo_v_file > ul > li > a").unwrap(),
         }
     }
+}
+
+#[derive(Error, Debug)]
+enum CseMetadataError {
+    #[error("URL not found error")]
+    UrlNotFound,
+    #[error("URL parse failed for {0}")]
+    UrlParseError(String),
+    #[error("ID is empty for URL: {0}")]
+    IdEmpty(String),
+    #[error("Author not found error for ID: {0}")]
+    AuthorNotFound(String),
+    #[error("Date element not found for ID: {0}")]
+    DateNotFound(String),
+    #[error("Date parse failed for {0}")]
+    DateParseError(String),
 }
 
 const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
@@ -128,30 +145,30 @@ where
                     .select(&self.selectors.url)
                     .next()
                     .and_then(|a| a.value().attr("href"))
-                    .ok_or("URL not found")?
+                    .ok_or(CseMetadataError::UrlNotFound)?
                     .to_string();
 
                 let id = Url::parse(&url)
-                    .map_err(|_| format!("URL parse failed for {}", url))?
+                    .map_err(|_| CseMetadataError::UrlParseError(url.clone()))?
                     .query_pairs()
                     .find(|(key, value)| key == "wr_id" && !value.is_empty())
                     .map(|(_, value)| value.to_string())
-                    .ok_or(format!("ID is empty for URL: {}", url))?;
+                    .ok_or(CseMetadataError::IdEmpty(url.clone()))?;
 
                 let author = tr
                     .select(&self.selectors.author)
                     .next()
                     .map(|span| span.text().collect::<String>().trim().to_string())
-                    .ok_or(format!("Author element not found for ID: {}", id))?;
+                    .ok_or(CseMetadataError::AuthorNotFound(id.clone()))?;
 
                 let created_at = {
                     let date = tr
                         .select(&self.selectors.created_at)
                         .next()
                         .map(|element| element.text().collect::<String>().trim().to_string())
-                        .ok_or(format!("Date element not found for ID: {}", id))?;
+                        .ok_or(CseMetadataError::DateNotFound(id.clone()))?;
                     Date::parse(&date, DATE_FORMAT)
-                        .map_err(|_| format!("Date parse failed for {}", date))?
+                        .map_err(|_| CseMetadataError::DateParseError(date.clone()))?
                         .midnight()
                         .assume_offset(offset!(+09:00))
                 };
@@ -163,11 +180,11 @@ where
                     created_at,
                 })
             })
-            .filter_map(|result: Result<CseMetadata, String>| {
+            .filter_map(|result: Result<CseMetadata, CseMetadataError>| {
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
                 result
-                    .inspect_err(|msg| warn!("[{}] {}", T::IDENTIFIER, msg))
+                    .inspect_err(|e| warn!("[{}] {:?}", T::IDENTIFIER, e))
                     .ok()
             })
             .collect::<Vec<CseMetadata>>();
