@@ -325,6 +325,7 @@ mod tests {
         let first_post_metadata = &posts_metadata[0];
 
         // 실제 게시물 가져오기
+        #[allow(clippy::needless_borrow)]
         let post = ssu_catch_plugin
             .fetch_post(&first_post_metadata)
             .await

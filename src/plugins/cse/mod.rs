@@ -228,8 +228,9 @@ mod tests {
 
         let first_metadata = &metadata_list[0];
 
+        #[allow(clippy::needless_borrow)]
         let post = crawler
-            .fetch_post::<CseBachelorPlugin>(first_metadata)
+            .fetch_post::<CseBachelorPlugin>(&first_metadata)
             .await
             .unwrap();
         assert!(!post.title.is_empty());
