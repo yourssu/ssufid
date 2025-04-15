@@ -6,7 +6,7 @@ use crate::{
 use super::CseCrawler;
 
 pub struct CseBachelorPlugin {
-    crawler: CseCrawler,
+    crawler: CseCrawler<Self>,
 }
 
 impl SsufidPlugin for CseBachelorPlugin {
@@ -17,7 +17,7 @@ impl SsufidPlugin for CseBachelorPlugin {
     const BASE_URL: &'static str = "https://cse.ssu.ac.kr/bbs/board.php?bo_table=notice";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        self.crawler.crawl::<Self>(posts_limit).await
+        self.crawler.crawl(posts_limit).await
     }
 }
 
