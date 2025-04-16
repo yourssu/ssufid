@@ -1,9 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use time;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+use tokio::{io::AsyncWriteExt, time::Instant};
 
 use crate::error::{Error, PluginError};
 
@@ -74,10 +75,21 @@ impl SsufidCore {
         retry_count: u32,
     ) -> Result<SsufidSiteData, Error> {
         for attempt in 1..=retry_count {
+            let start = Instant::now();
+
             let result = self
                 .run(plugin, posts_limit)
                 .await
-                .inspect_err(|e| eprintln!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+                .inspect_err(|e| error!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+
+            let elapsed = start.elapsed();
+
+            info!(
+                "[{}] completed crawling in {:.2}s",
+                T::IDENTIFIER,
+                elapsed.as_secs_f32()
+            );
+
             if result.is_ok() {
                 return result;
             }
