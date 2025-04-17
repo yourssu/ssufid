@@ -13,6 +13,10 @@ use crate::{
     core::{SsufidPlugin, SsufidPost},
 };
 
+pub mod bachelor;
+pub mod employment;
+pub mod graduate;
+
 #[derive(Debug)]
 struct CseMetadata {
     category: Option<String>,
@@ -249,10 +253,6 @@ where
     }
 }
 
-pub mod bachelor;
-pub mod employment;
-pub mod graduate;
-
 #[cfg(test)]
 mod tests {
     use crate::plugins::cse::bachelor::CseBachelorPlugin;
@@ -280,7 +280,7 @@ mod tests {
         );
 
         // 학사 공지사항의 첫 게시글은 공지 카테고리 존재
-        assert!(matches!(first_metadata.category.as_ref(), Some(x) if x == "공지"));
+        assert_eq!(first_metadata.category, Some("공지".to_string()));
     }
 
     #[tokio::test]
