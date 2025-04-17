@@ -194,24 +194,35 @@ impl SsuCatchPlugin {
         let attachments = document
             .select(&self.selectors.attachments)
             .filter_map(|element| {
-                element
-                    .value()
-                    .attr("href")
-                    .map(|href| format!("{}{}", Self::BASE_URL, href))
+                element.value().attr("href").map(|href| {
+                    let url = format!("{}{}", Self::BASE_URL, href);
+                    let name = element.text().collect::<String>().trim().to_string();
+                    crate::core::Attachment {
+                        url,
+                        name: if name.is_empty() { None } else { Some(name) },
+                        mime_type: None,
+                    }
+                })
             })
             .collect();
 
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
             url: post_metadata.url.clone(),
-            author: post_metadata.author.clone(),
+            author: Some(post_metadata.author.clone()),
             title,
+            description: None,
             category,
             created_at,
             updated_at: None,
-            thumbnail,
+            thumbnail: if thumbnail.is_empty() {
+                None
+            } else {
+                Some(thumbnail)
+            },
             content,
             attachments,
+            metadata: None,
         })
     }
 
@@ -326,7 +337,7 @@ mod tests {
 
         // 실제 게시물 가져오기
         let post = ssu_catch_plugin
-            .fetch_post(&first_post_metadata)
+            .fetch_post(first_post_metadata)
             .await
             .expect("Failed to fetch post");
 
