@@ -82,15 +82,16 @@ impl SsufidCore {
                 .await
                 .inspect_err(|e| error!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
 
-            let elapsed = start.elapsed();
+            if let Ok(data) = &result {
+                let elapsed = start.elapsed();
 
-            info!(
-                "[{}] completed crawling in {:.2}s",
-                T::IDENTIFIER,
-                elapsed.as_secs_f32()
-            );
+                info!(
+                    "[{}] Successfully crawled {} posts in {:.2}s",
+                    T::IDENTIFIER,
+                    data.items.len(),
+                    elapsed.as_secs_f32()
+                );
 
-            if result.is_ok() {
                 return result;
             }
         }
