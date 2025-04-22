@@ -10,7 +10,7 @@ use url::Url;
 
 use crate::{
     PluginError,
-    core::{SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost},
 };
 
 pub mod bachelor;
@@ -22,7 +22,7 @@ struct CseMetadata {
     category: Option<String>,
     id: String,
     url: String,
-    author: String,
+    author: Option<String>,
     created_at: time::OffsetDateTime,
 }
 
@@ -67,8 +67,6 @@ enum CseMetadataError {
     UrlParseError(String),
     #[error("ID is empty for URL: {0}")]
     IdEmpty(String),
-    #[error("Author not found error for ID: {0}")]
-    AuthorNotFound(String),
     #[error("Date element not found for ID: {0}")]
     DateNotFound(String),
     #[error("Date parse failed for {0}")]
@@ -162,8 +160,7 @@ where
                 let author = tr
                     .select(&self.selectors.author)
                     .next()
-                    .map(|span| span.text().collect::<String>().trim().to_string())
-                    .ok_or(CseMetadataError::AuthorNotFound(id.clone()))?;
+                    .map(|span| span.text().collect::<String>().trim().to_string());
 
                 let created_at = {
                     let date = tr
@@ -217,9 +214,7 @@ where
         let thumbnail = document
             .select(&self.selectors.thumbnail)
             .next()
-            .and_then(|img| img.value().attr("src"))
-            .unwrap_or_default()
-            .to_string();
+            .and_then(|img| img.value().attr("src"));
 
         let content = document
             .select(&self.selectors.content)
@@ -234,8 +229,14 @@ where
 
         let attachments = document
             .select(&self.selectors.attachments)
-            .filter_map(|a| a.value().attr("href"))
-            .map(|s| s.to_string())
+            .map(|a| Attachment {
+                url: a.value().attr("href").unwrap_or_default().to_string(),
+                name: a
+                    .child_elements()
+                    .next()
+                    .map(|strong| strong.text().collect::<String>()),
+                mime_type: None,
+            })
             .collect();
 
         Ok(SsufidPost {
@@ -243,12 +244,14 @@ where
             url: metadata.url.clone(),
             author: metadata.author.clone(),
             title,
+            description: None,
             category: metadata.category.clone().map_or(vec![], |c| vec![c]),
             created_at: metadata.created_at,
             updated_at: None,
-            thumbnail,
+            thumbnail: thumbnail.map(String::from),
             content,
             attachments,
+            metadata: None,
         })
     }
 }

@@ -12,7 +12,6 @@ use ssufid::{
             graduate::CseGraduatePlugin,
         },
         ssu_catch::SsuCatchPlugin,
-        ssu_catch::SsuCatchPlugin,
         ssu_path::{SsuPathCredential, SsuPathPlugin},
     },
 };
@@ -149,12 +148,6 @@ fn construct_tasks(
                 std::env::var("SSU_ID").unwrap_or_default(),
                 std::env::var("SSU_PASSWORD").unwrap_or_default(),
             ))),
-        ),
-    ];
-    let tasks = [
-        (
-            SsuCatchPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
         ),
         (
             CseBachelorPlugin::IDENTIFIER,
