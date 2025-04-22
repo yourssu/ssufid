@@ -216,10 +216,7 @@ impl SsuPathProgram {
         let title = elem
             .select(&CLASSES_TITLE_SELECTOR)
             .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse title of division".to_string(),
-            )))?
-            .to_string("");
+            .ok_or_parse_err("Cannot parse title of entry".to_string())?;
         let desc_map = elem
             .select(&CLASSES_DESCS_SELECTOR)
             .filter_map(Self::dl_to_pair)
