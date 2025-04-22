@@ -155,7 +155,7 @@ mod tests {
             enclosure.unwrap().url(),
             "https://example.com/basic_thumb.jpg"
         );
-        assert_eq!(enclosure.unwrap().mime_type(), "image/*");
+        assert_eq!(enclosure.unwrap().mime_type(), "image/jpeg");
     }
 
     #[test]
