@@ -213,14 +213,16 @@ async fn post(
     Ok(SsufidPost {
         id: program.id.clone(),
         title: program_table.title,
+        description: Some(program.description.clone()),
         category: vec![program.label.clone()],
         url,
         created_at: program.create_at(),
         content,
         updated_at: None,
-        author: program.major_types.first().cloned().unwrap_or_default(),
-        thumbnail: program.thumbnail.clone(),
+        author: program.major_types.first().cloned(),
+        thumbnail: Some(program.thumbnail.clone()),
         attachments: Vec::default(),
+        metadata: None,
     })
 }
 
