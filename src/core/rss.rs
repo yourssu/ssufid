@@ -49,10 +49,14 @@ impl From<SsufidPost> for rss::Item {
         }
 
         if let Some(thumbnail_url) = post.thumbnail {
+            let mime_type = mime_guess::from_path(&thumbnail_url)
+                .first()
+                .map(|m| m.to_string()) // 추론 실패 시 기본값 사용
+                .unwrap_or("image/*".to_string());
             builder.enclosure(Enclosure {
                 url: thumbnail_url,
-                length: "0".to_string(),          // Length is often unknown
-                mime_type: "image/*".to_string(), // Generic image type
+                length: "0".to_string(), // Length is often unknown
+                mime_type,
             });
         }
         // TODO: use media extension to iterate over attachments
