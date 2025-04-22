@@ -3,9 +3,13 @@ use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
 use clap::Parser;
 use env_logger::{Builder, Env};
 use futures::future::join_all;
+use log::error;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
-    plugins::ssu_catch::SsuCatchPlugin,
+    plugins::{
+        ssu_catch::SsuCatchPlugin,
+        ssu_path::{SsuPathCredential, SsuPathPlugin},
+    },
 };
 use tokio::io::AsyncWriteExt;
 
@@ -72,7 +76,7 @@ async fn main() -> eyre::Result<()> {
         Ok(())
     } else {
         for err in &errors {
-            eprintln!("{:?}", err);
+            error!("{:?}", err);
         }
         Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
     }
@@ -80,6 +84,7 @@ async fn main() -> eyre::Result<()> {
 
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
+    SsuPath(SsuPathPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -92,6 +97,9 @@ impl SsufidPluginRegistry {
     ) -> eyre::Result<()> {
         match self {
             SsufidPluginRegistry::SsuCatch(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SsuPath(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -113,10 +121,19 @@ fn construct_tasks(
         .is_empty()
         .not()
         .then_some(HashSet::from_iter(options.exclude));
-    let tasks = [(
-        SsuCatchPlugin::IDENTIFIER,
-        SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
-    )];
+    let tasks = [
+        (
+            SsuCatchPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
+        ),
+        (
+            SsuPathPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SsuPath(SsuPathPlugin::new(SsuPathCredential::Password(
+                std::env::var("SSU_ID").unwrap_or_default(),
+                std::env::var("SSU_PASSWORD").unwrap_or_default(),
+            ))),
+        ),
+    ];
 
     if let Some(include) = include {
         tasks
