@@ -104,14 +104,14 @@ pub(super) trait ParseDateRange {
 impl ParseDateRange for String {
     fn parse_date_range(&self) -> Result<(OffsetDateTime, OffsetDateTime), SsuPathPluginError> {
         let mut apply_durations = self.split("~").map(|s| {
-            Ok(PrimitiveDateTime::parse(s.trim(), DATE_FORMAT)
+            PrimitiveDateTime::parse(s.trim(), DATE_FORMAT)
                 .or_else(|_| PrimitiveDateTime::parse(s.trim(), DATE_FORMAT_ALT))
+                .map(|dt| dt.assume_offset(UTC_OFFSET))
                 .map_err(|e| {
                     SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
                         format!("Cannot parse date: {e}").to_string(),
                     ))
-                })?
-                .assume_offset(UTC_OFFSET))
+                })
         });
         let apply_duration =
             apply_durations
