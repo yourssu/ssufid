@@ -113,7 +113,7 @@ impl SsuCatchPlugin {
                     .to_string();
 
                 if id.is_empty() {
-                    warn!("ID is empty for URL: {}", url);
+                    warn!("[{}] ID is empty for URL: {}", Self::IDENTIFIER, url);
                     return None;
                 }
 
@@ -194,24 +194,35 @@ impl SsuCatchPlugin {
         let attachments = document
             .select(&self.selectors.attachments)
             .filter_map(|element| {
-                element
-                    .value()
-                    .attr("href")
-                    .map(|href| format!("{}{}", Self::BASE_URL, href))
+                element.value().attr("href").map(|href| {
+                    let url = format!("{}{}", Self::BASE_URL, href);
+                    let name = element.text().collect::<String>().trim().to_string();
+                    crate::core::Attachment {
+                        url,
+                        name: if name.is_empty() { None } else { Some(name) },
+                        mime_type: None,
+                    }
+                })
             })
             .collect();
 
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
             url: post_metadata.url.clone(),
-            author: post_metadata.author.clone(),
+            author: Some(post_metadata.author.clone()),
             title,
+            description: None,
             category,
             created_at,
             updated_at: None,
-            thumbnail,
+            thumbnail: if thumbnail.is_empty() {
+                None
+            } else {
+                Some(thumbnail)
+            },
             content,
             attachments,
+            metadata: None,
         })
     }
 
@@ -248,7 +259,12 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
         let metadata_results = futures::future::join_all((1..=pages).map(|page| {
-            info!("Crawling post metadata from page: {}/{}", page, pages);
+            info!(
+                "[{}] Crawling post metadata from page: {}/{}",
+                Self::IDENTIFIER,
+                page,
+                pages
+            );
             self.fetch_page_posts_metadata(page)
         }))
         .await;
@@ -262,10 +278,11 @@ impl SsufidPlugin for SsuCatchPlugin {
             .collect::<Vec<SsuCatchMetadata>>();
 
         // 모든 포스트 크롤링이 완료될 때까지 대기
-        let post_results = futures::future::join_all(all_metadata.iter().map(|metadata| {
-            info!("Crawling post content for ID: {}", metadata.id);
-            self.fetch_post(metadata)
-        }))
+        let post_results = futures::future::join_all(
+            all_metadata
+                .iter()
+                .map(|metadata| self.fetch_post(metadata)),
+        )
         .await;
 
         let all_posts = post_results

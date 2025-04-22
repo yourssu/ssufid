@@ -1,30 +1,41 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use time;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::RwLock;
+use tokio::{io::AsyncWriteExt, time::Instant};
 
 use crate::error::{Error, PluginError};
+
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub struct Attachment {
+    pub url: String,
+    pub name: Option<String>,
+    pub mime_type: Option<String>,
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     pub id: String,
     pub url: String,
-    #[serde(default)]
-    pub author: String,
+    pub author: Option<String>,
     pub title: String,
+    pub description: Option<String>,
     #[serde(default)]
     pub category: Vec<String>,
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: time::OffsetDateTime,
     #[serde(with = "time::serde::rfc3339::option")]
     pub updated_at: Option<time::OffsetDateTime>,
-    #[serde(default)]
-    pub thumbnail: String,
+    pub thumbnail: Option<String>,
     pub content: String,
     #[serde(default)]
-    pub attachments: Vec<String>,
+    pub attachments: Vec<Attachment>,
+    pub metadata: Option<BTreeMap<String, String>>,
 }
 
 impl SsufidPost {
@@ -74,11 +85,23 @@ impl SsufidCore {
         retry_count: u32,
     ) -> Result<SsufidSiteData, Error> {
         for attempt in 1..=retry_count {
+            let start = Instant::now();
+
             let result = self
                 .run(plugin, posts_limit)
                 .await
-                .inspect_err(|e| eprintln!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
-            if result.is_ok() {
+                .inspect_err(|e| error!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+
+            if let Ok(data) = &result {
+                let elapsed = start.elapsed();
+
+                info!(
+                    "[{}] Successfully crawled {} posts in {:.2}s",
+                    T::IDENTIFIER,
+                    data.items.len(),
+                    elapsed.as_secs_f32()
+                );
+
                 return result;
             }
         }
@@ -209,28 +232,41 @@ mod tests {
     async fn test_read_cache() {
         let mock = vec![
             SsufidPost {
-                id: "test-id".to_string(),
-                url: "https://example.com/test".to_string(),
-                author: "Test Author".to_string(),
-                title: "Test Title".to_string(),
-                category: vec!["Test Category".to_string()],
+                id: "test-id-1".to_string(),
+                url: "https://example.com/test1".to_string(),
+                author: Some("Author One".to_string()),
+                title: "Test Title 1".to_string(),
+                description: Some("This is a description for test 1.".to_string()),
+                category: vec!["Category A".to_string()],
                 created_at: datetime!(2024-03-22 12:00:00 UTC),
                 updated_at: None,
-                thumbnail: "https://example.com/thumbnail.jpg".to_string(),
-                content: "Test Content".to_string(),
-                attachments: vec![],
+                thumbnail: Some("https://example.com/thumb1.jpg".to_string()),
+                content: "Test Content 1".to_string(),
+                attachments: vec![super::Attachment {
+                    url: "https://example.com/attachment1.pdf".to_string(),
+                    name: Some("Attachment 1".to_string()),
+                    mime_type: Some("application/pdf".to_string()),
+                }],
+                metadata: Some(
+                    [("key1".to_string(), "value1".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
             },
             SsufidPost {
-                id: "test-id".to_string(),
-                url: "https://example.com/test".to_string(),
-                author: "Test Author".to_string(),
-                title: "Test Title".to_string(),
-                category: vec!["Test Category".to_string()],
-                created_at: datetime!(2024-03-22 12:00:00 UTC),
-                updated_at: Some(datetime!(2024-03-22 12:00:00 UTC)),
-                thumbnail: "https://example.com/thumbnail.jpg".to_string(),
-                content: "Test Content".to_string(),
-                attachments: vec![],
+                id: "test-id-2".to_string(),
+                url: "https://example.com/test2".to_string(),
+                author: None, // Test None author
+                title: "Test Title 2".to_string(),
+                description: None, // Test None description
+                category: vec!["Category B".to_string(), "Category C".to_string()],
+                created_at: datetime!(2024-03-23 10:00:00 UTC),
+                updated_at: Some(datetime!(2024-03-23 11:00:00 UTC)),
+                thumbnail: None, // Test None thumbnail
+                content: "Test Content 2".to_string(),
+                attachments: vec![], // Test empty attachments
+                metadata: None,      // Test None metadata
             },
         ];
 
@@ -266,26 +302,39 @@ mod tests {
             SsufidPost {
                 id: "1".to_string(),
                 url: "http://example.com/1".to_string(),
-                author: "Old Author".to_string(),
+                author: Some("Author 1".to_string()),
                 title: "Old Title 1".to_string(),
+                description: Some("Description for 1".to_string()),
                 category: vec!["Category 1".to_string()],
                 created_at: now,
                 updated_at: None,
-                thumbnail: "http://example.com/thumbnail1.jpg".to_string(),
+                thumbnail: Some("http://example.com/thumb1.jpg".to_string()),
                 content: "Old Content 1".to_string(),
-                attachments: vec![],
+                attachments: vec![super::Attachment {
+                    url: "http://example.com/attach1.doc".to_string(),
+                    name: None,
+                    mime_type: None,
+                }],
+                metadata: Some(
+                    [("meta_key_1".to_string(), "meta_value_1".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
             },
             SsufidPost {
                 id: "2".to_string(),
                 url: "http://example.com/2".to_string(),
-                author: "Old Author".to_string(),
+                author: Some("Author 2".to_string()),
                 title: "Old Title 2".to_string(),
+                description: Some("Description for 2".to_string()),
                 category: vec!["Category 2".to_string()],
                 created_at: now,
-                updated_at: Some(now),
-                thumbnail: "http://example.com/thumbnail2.jpg".to_string(),
+                updated_at: Some(now), // Pre-existing update time
+                thumbnail: Some("http://example.com/thumb2.jpg".to_string()),
                 content: "Old Content 2".to_string(),
                 attachments: vec![],
+                metadata: None,
             },
         ];
 
@@ -294,53 +343,83 @@ mod tests {
             SsufidPost {
                 id: "1".to_string(),
                 url: "http://example.com/1".to_string(),
-                author: "Old Author".to_string(),
-                title: "Old Title 1".to_string(),
-                category: vec!["Category 1".to_string()],
+                author: Some("Author 1".to_string()), // Same as old
+                title: "Old Title 1".to_string(),     // Same as old
+                description: Some("Description for 1".to_string()), // Same as old
+                category: vec!["Category 1".to_string()], // Same as old
                 created_at: now,
                 updated_at: None,
-                thumbnail: "http://example.com/thumbnail1.jpg".to_string(),
-                content: "Old Content 1".to_string(),
-                attachments: vec![],
+                thumbnail: Some("http://example.com/thumb1.jpg".to_string()), // Same as old
+                content: "Old Content 1".to_string(),                         // Same as old
+                attachments: vec![super::Attachment {
+                    // Same as old
+                    url: "http://example.com/attach1.doc".to_string(),
+                    name: None,
+                    mime_type: None,
+                }],
+                metadata: Some(
+                    // Same as old
+                    [("meta_key_1".to_string(), "meta_value_1".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
             },
-            // Case 2: 기존 포스트와 내용이 다른 경우
+            // Case 2: 기존 포스트와 내용(title)이 다른 경우 -> updated_at 설정됨
             SsufidPost {
                 id: "2".to_string(),
-                url: "http://example.com/2".to_string(),
-                author: "Old Author".to_string(),
-                title: "Updated Title 2".to_string(), // 제목 변경
-                category: vec!["Category 2".to_string()],
+                url: "http://example.com/2_new".to_string(), // URL 변경 (contents_eq에 영향 없음)
+                author: Some("Author 2 Updated".to_string()), // Author 변경 (contents_eq에 영향 없음)
+                title: "Updated Title 2".to_string(), // 제목 변경 (contents_eq에 영향 있음!)
+                description: Some("Description for 2 Updated".to_string()), // Description 변경 (contents_eq에 영향 없음)
+                category: vec!["Category 2".to_string()],                   // Same
                 created_at: now,
-                updated_at: None,
-                thumbnail: "http://example.com/thumbnail2.jpg".to_string(),
-                content: "Old Content 2".to_string(),
-                attachments: vec![],
+                updated_at: None, // Should be set by inject_update_date
+                thumbnail: Some("http://example.com/thumb2_new.jpg".to_string()), // Thumbnail 변경 (contents_eq에 영향 없음)
+                content: "Old Content 2".to_string(),                             // Same
+                attachments: vec![super::Attachment {
+                    // Attachment 추가 (contents_eq에 영향 없음)
+                    url: "http://example.com/attach2.png".to_string(),
+                    name: Some("New Attachment".to_string()),
+                    mime_type: Some("image/png".to_string()),
+                }],
+                metadata: Some(
+                    // Metadata 추가 (contents_eq에 영향 없음)
+                    [("meta_key_2".to_string(), "meta_value_2".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
             },
-            // Case 3: 새로운 포스트인 경우
+            // Case 3: 새로운 포스트인 경우 -> updated_at 설정 안됨
             SsufidPost {
                 id: "3".to_string(),
                 url: "http://example.com/3".to_string(),
-                author: "New Author".to_string(),
+                author: Some("New Author 3".to_string()),
                 title: "New Title 3".to_string(),
+                description: Some("Description for 3".to_string()),
                 category: vec!["Category 3".to_string()],
                 created_at: now,
-                updated_at: None,
-                thumbnail: "http://example.com/thumbnail3.jpg".to_string(),
+                updated_at: None, // Should remain None
+                thumbnail: None,
                 content: "New Content 3".to_string(),
                 attachments: vec![],
+                metadata: None,
             },
-            // Case 4: 이미 updated_at이 설정된 경우
+            // Case 4: 이미 updated_at이 설정된 경우 -> 기존 updated_at 유지
             SsufidPost {
                 id: "4".to_string(),
                 url: "http://example.com/4".to_string(),
-                author: "Old Author".to_string(),
+                author: Some("Author 4".to_string()),
                 title: "Title 4".to_string(),
+                description: Some("Description for 4".to_string()),
                 category: vec!["Category 4".to_string()],
                 created_at: now,
-                updated_at: Some(now),
-                thumbnail: "http://example.com/thumbnail4.jpg".to_string(),
+                updated_at: Some(now), // Pre-set update time, should be kept
+                thumbnail: Some("http://example.com/thumb4.jpg".to_string()),
                 content: "Content 4".to_string(),
                 attachments: vec![],
+                metadata: None,
             },
         ];
 
