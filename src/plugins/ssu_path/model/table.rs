@@ -164,7 +164,7 @@ impl SsuPathDivisionTable {
         let mut headers = table_childs
             .next()
             .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse title of content".to_string(),
+                "Cannot parse division table header".to_string(),
             )))?
             .child_elements()
             .map(|e| e.to_string(""))
@@ -174,7 +174,7 @@ impl SsuPathDivisionTable {
         let rows = table_childs
             .next()
             .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse title of content".to_string(),
+                "Cannot parse division table rows".to_string(),
             )))?
             .child_elements()
             .map(SsuPathDivisionTableRow::from_elem)
