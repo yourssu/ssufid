@@ -228,7 +228,7 @@ where
                 "Content element not found".to_string(),
             ))?
             .child_elements()
-            .map(|p| p.text().collect::<String>().replace('\u{a0}', " ")) // &nbsp 제거
+            .map(|p| p.html())
             .collect::<Vec<String>>()
             .join("\n");
 
