@@ -170,10 +170,7 @@ impl SsuPathProgram {
             let total = desc_info_map
                 .get("모집정원")
                 .cloned()
-                .ok_and_parse_u32("Cannot parse total of entry".to_string())
-                .inspect_err(|_| {
-                    dbg!(&title, &desc_info_map);
-                })?;
+                .ok_and_parse_u32("Cannot parse total of entry".to_string())?;
             Ok(Self {
                 id,
                 thumbnail,
@@ -242,10 +239,7 @@ impl SsuPathProgram {
         let total = desc_map
             .get("모집정원")
             .cloned()
-            .ok_and_parse_u32("Cannot parse total of entry".to_string())
-            .inspect_err(|_| {
-                dbg!(&title, &desc_map);
-            })?;
+            .ok_and_parse_u32("Cannot parse total of entry".to_string())?;
         let location = desc_map
             .get("교육장소")
             .cloned()
