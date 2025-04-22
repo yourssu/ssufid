@@ -12,6 +12,7 @@ use crate::{
     PluginError,
     core::{Attachment, SsufidPlugin, SsufidPost},
 };
+use scraper::Element;
 
 pub mod bachelor;
 pub mod employment;
@@ -232,8 +233,7 @@ where
             .map(|a| Attachment {
                 url: a.value().attr("href").unwrap_or_default().to_string(),
                 name: a
-                    .child_elements()
-                    .next()
+                    .first_element_child()
                     .map(|strong| strong.text().collect::<String>()),
                 mime_type: None,
             })
