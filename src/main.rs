@@ -7,6 +7,10 @@ use log::error;
 use ssufid::{
     core::{SsufidCore, SsufidPlugin},
     plugins::{
+        cse::{
+            bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin,
+            graduate::CseGraduatePlugin,
+        },
         ssu_catch::SsuCatchPlugin,
         ssu_path::{SsuPathCredential, SsuPathPlugin},
     },
@@ -85,6 +89,9 @@ async fn main() -> eyre::Result<()> {
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
     SsuPath(SsuPathPlugin),
+    CseBachelor(CseBachelorPlugin),
+    CseGraduate(CseGraduatePlugin),
+    CseEmployment(CseEmploymentPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -100,6 +107,15 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SsuPath(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::CseBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::CseGraduate(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::CseEmployment(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -132,6 +148,18 @@ fn construct_tasks(
                 std::env::var("SSU_ID").unwrap_or_default(),
                 std::env::var("SSU_PASSWORD").unwrap_or_default(),
             ))),
+        ),
+        (
+            CseBachelorPlugin::IDENTIFIER,
+            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::new()),
+        ),
+        (
+            CseGraduatePlugin::IDENTIFIER,
+            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::new()),
+        ),
+        (
+            CseEmploymentPlugin::IDENTIFIER,
+            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::new()),
         ),
     ];
 

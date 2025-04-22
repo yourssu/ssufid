@@ -148,7 +148,11 @@ impl SsufidCore {
 
         for (id, posts) in &*cache {
             let json = serde_json::to_string_pretty(&posts)?;
-            let mut file = tokio::fs::File::create(dir.join(format!("{id}.json"))).await?;
+            let path = dir.join(format!("{id}.json"));
+            if let Some(parent) = path.parent() {
+                tokio::fs::create_dir_all(parent).await?;
+            }
+            let mut file = tokio::fs::File::create(path).await?;
             file.write_all(json.as_bytes()).await?;
         }
         Ok(())
