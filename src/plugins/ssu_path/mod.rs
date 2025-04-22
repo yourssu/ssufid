@@ -206,9 +206,7 @@ async fn post(
         _ => None,
     };
     let division_table = match program.kind {
-        SsuPathProgramKind::Division { .. } => {
-            Some(SsuPathDivisionTable::from_document(&document)?)
-        }
+        SsuPathProgramKind::Division(_) => Some(SsuPathDivisionTable::from_document(&document)?),
         _ => None,
     };
     let content = construct_content(&program_table, &course_table, &division_table);
