@@ -81,7 +81,7 @@ async fn main() -> eyre::Result<()> {
         Ok(())
     } else {
         for err in &errors {
-            error!("{:?}", err);
+            error!("{err:?}");
         }
         Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
     }

@@ -101,7 +101,7 @@ impl SsufidCore {
             let result = self
                 .run(plugin, posts_limit)
                 .await
-                .inspect_err(|e| error!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+                .inspect_err(|e| error!("{e:?} [Attempt {attempt}/{retry_count}]"));
 
             if let Ok(data) = &result {
                 let elapsed = start.elapsed();

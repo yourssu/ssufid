@@ -134,9 +134,7 @@ impl MediaPost {
         let created_at = document.select(&CREATED_AT_SELECTOR).text_first()?;
         let created_at = PrimitiveDateTime::parse(created_at.trim(), DATE_FORMAT)
             .map(|dt| dt.assume_offset(offset!(+9)))
-            .map_err(|e| {
-                PluginError::parse::<MediaPlugin>(format!("Failed to parse date: {}", e))
-            })?;
+            .map_err(|e| PluginError::parse::<MediaPlugin>(format!("Failed to parse date: {e}")))?;
         let attachments = document
             .select(&ATTACHMENT_SELECTOR)
             .filter_map(|element| {
