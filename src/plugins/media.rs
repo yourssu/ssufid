@@ -97,7 +97,7 @@ fn as_post_id(element: scraper::ElementRef) -> Result<String, PluginError> {
         .nth(1)
         .map(str::to_string)
         .ok_or(PluginError::parse::<MediaPlugin>(
-            "Failed to parse post ID".to_string(),
+            "Failed to parse post id, invalid id format".to_string(),
         ))
 }
 
