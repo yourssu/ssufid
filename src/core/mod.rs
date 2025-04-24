@@ -18,6 +18,17 @@ pub struct Attachment {
     pub mime_type: Option<String>,
 }
 
+impl Attachment {
+    pub fn from_guess(name: String, url: String) -> Self {
+        let mime = mime_guess::from_path(&name).first().map(|m| m.to_string());
+        Self {
+            url,
+            name: Some(name),
+            mime_type: mime,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     pub id: String,
