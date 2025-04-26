@@ -18,6 +18,17 @@ pub struct Attachment {
     pub mime_type: Option<String>,
 }
 
+impl Attachment {
+    pub fn from_guess(name: String, url: String) -> Self {
+        let mime = mime_guess::from_path(&name).first().map(|m| m.to_string());
+        Self {
+            url,
+            name: Some(name),
+            mime_type: mime,
+        }
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidPost {
     pub id: String,
@@ -90,7 +101,7 @@ impl SsufidCore {
             let result = self
                 .run(plugin, posts_limit)
                 .await
-                .inspect_err(|e| error!("{:?} [Attempt {}/{}]", e, attempt, retry_count));
+                .inspect_err(|e| error!("{e:?} [Attempt {attempt}/{retry_count}]"));
 
             if let Ok(data) = &result {
                 let elapsed = start.elapsed();

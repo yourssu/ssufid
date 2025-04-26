@@ -41,8 +41,7 @@ impl From<SsuPathPluginError> for PluginError {
 impl From<reqwest::Error> for SsuPathPluginError {
     fn from(err: reqwest::Error) -> Self {
         SsuPathPluginError(PluginError::request::<SsuPathPlugin>(format!(
-            "Request error: {}",
-            err
+            "Request error: {err}"
         )))
     }
 }
@@ -50,8 +49,7 @@ impl From<reqwest::Error> for SsuPathPluginError {
 impl From<serde_json::Error> for SsuPathPluginError {
     fn from(value: serde_json::Error) -> Self {
         SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(format!(
-            "Parse error: {}",
-            value
+            "Parse error: {value}"
         )))
     }
 }
@@ -59,8 +57,7 @@ impl From<serde_json::Error> for SsuPathPluginError {
 impl From<SsuSsoError> for SsuPathPluginError {
     fn from(err: SsuSsoError) -> Self {
         SsuPathPluginError(PluginError::request::<SsuPathPlugin>(format!(
-            "SSU SSO error: {}",
-            err
+            "SSU SSO error: {err}"
         )))
     }
 }
@@ -150,7 +147,7 @@ impl SsufidPlugin for SsuPathPlugin {
             posts_limit
         );
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);
-        info!("Crawling {} pages", pages);
+        info!("Crawling {pages} pages");
         let client = self.client().await?;
         let entries = (1..=pages)
             .map(|page| entries(&client, page))
@@ -180,7 +177,7 @@ async fn entries(
     page: usize,
 ) -> Result<Vec<SsuPathProgram>, SsuPathPluginError> {
     let url = format!("{PATH_LIST_URL}{page}");
-    info!("Crawling entries from {}", url);
+    info!("Crawling entries from {url}");
     let response = client.get(url).send().await?.text().await?;
     let document = Html::parse_document(&response);
     document
