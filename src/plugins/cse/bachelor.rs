@@ -2,11 +2,10 @@ use crate::{
     PluginError,
     core::{SsufidPlugin, SsufidPost},
 };
-
-use super::CseCrawler;
+use crate::plugins::common::it_crawler::ITCrawler;
 
 pub struct CseBachelorPlugin {
-    crawler: CseCrawler<Self>,
+    crawler: ITCrawler<Self>,
 }
 
 impl SsufidPlugin for CseBachelorPlugin {
@@ -28,9 +27,9 @@ impl Default for CseBachelorPlugin {
 }
 
 impl CseBachelorPlugin {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
-            crawler: CseCrawler::new(),
+            crawler: ITCrawler::new(),
         }
     }
 }

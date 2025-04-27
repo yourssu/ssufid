@@ -145,7 +145,7 @@ fn construct_tasks(
     let tasks = [
         (
             SsuCatchPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
+            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::default()),
         ),
         (
             SsuPathPlugin::IDENTIFIER,
@@ -156,15 +156,15 @@ fn construct_tasks(
         ),
         (
             CseBachelorPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::new()),
+            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::default()),
         ),
         (
             CseGraduatePlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::new()),
+            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::default()),
         ),
         (
             CseEmploymentPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::new()),
+            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::default()),
         ),
         (
             MediaPlugin::IDENTIFIER,
