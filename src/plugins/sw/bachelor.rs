@@ -1,8 +1,8 @@
+use crate::plugins::common::it_crawler::ITCrawler;
 use crate::{
     PluginError,
     core::{SsufidPlugin, SsufidPost},
 };
-use crate::plugins::common::it_crawler::ITCrawler;
 
 pub struct SwBachelorPlugin {
     crawler: ITCrawler<Self>,
