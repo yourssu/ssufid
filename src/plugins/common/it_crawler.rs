@@ -1,6 +1,7 @@
 // IT대학의 컴퓨터학부, 소프트웨어학부, 정보보호학과에
 // 해당하는 플러그인에서 사용되는 공통 모듈입니다.
 
+use futures::{TryStreamExt, stream::FuturesUnordered};
 use log::{info, warn};
 use scraper::{Html, Selector};
 use thiserror::Error;
@@ -92,30 +93,48 @@ where
     }
 
     pub(crate) async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        let metadata_list = self.fetch_metadata_list(posts_limit).await?;
+        info!(
+            "[{}] fetch {} post contents",
+            T::IDENTIFIER,
+            metadata_list.len()
+        );
+        metadata_list
+            .iter()
+            .map(|metadata| self.fetch_post(metadata))
+            .collect::<FuturesUnordered<_>>()
+            .try_collect::<Vec<_>>()
+            .await
+    }
+
+    /// 1 페이지부터 순서대로 최대 `posts_limit`개의 메타데이터를 반환합니다.
+    async fn fetch_metadata_list(&self, posts_limit: u32) -> Result<Vec<ITMetadata>, PluginError> {
         let mut remain = posts_limit as usize;
         let mut page = 1;
-        let mut ret = vec![];
+        let mut metadata_list: Vec<ITMetadata> = vec![];
 
         while remain > 0 {
             info!("[{}] page: {}", T::IDENTIFIER, page);
-            let metadata = self
+            let mut metadata = self
                 .fetch_metadata(page)
                 .await?
                 .into_iter()
                 .take(remain)
                 .collect::<Vec<ITMetadata>>();
-            let mut posts = futures::future::join_all(metadata.iter().map(|m| self.fetch_post(m)))
-                .await
-                .into_iter()
-                .collect::<Result<Vec<SsufidPost>, PluginError>>()?;
 
-            ret.append(&mut posts);
+            if metadata.is_empty() {
+                break;
+            }
+
             remain -= metadata.len();
+            metadata_list.append(&mut metadata);
             page += 1;
         }
-        Ok(ret)
+
+        Ok(metadata_list)
     }
 
+    /// `page` 페이지의 메타데이터 리스트를 반환합니다.
     async fn fetch_metadata(&self, page: u32) -> Result<Vec<ITMetadata>, PluginError> {
         let page_url = format!("{}/&page={}", T::BASE_URL, page);
 
@@ -193,6 +212,7 @@ where
         Ok(posts_metadata)
     }
 
+    /// `metadata`에 해당하는 게시글의 내용을 크롤링하여 반환합니다.
     async fn fetch_post(&self, metadata: &ITMetadata) -> Result<SsufidPost, PluginError> {
         let html = reqwest::get(&metadata.url)
             .await
@@ -297,5 +317,14 @@ mod tests {
 
         let post = crawler.fetch_post(first_metadata).await.unwrap();
         assert!(!post.title.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_crawler_fetch_metadata_list() {
+        let posts_limit = 100;
+        let crawler: ITCrawler<CseBachelorPlugin> = ITCrawler::new();
+
+        let metadata_list = crawler.fetch_metadata_list(posts_limit).await.unwrap();
+        assert_eq!(metadata_list.len(), posts_limit as usize);
     }
 }
