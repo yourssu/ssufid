@@ -11,6 +11,10 @@ use ssufid::{
             bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin,
             graduate::CseGraduatePlugin,
         },
+        sw::{
+            bachelor::SwBachelorPlugin, employment::SwEmploymentPlugin,
+            graduate::SwGraduatePlugin,
+        },
         media::MediaPlugin,
         ssu_catch::SsuCatchPlugin,
         ssu_path::{SsuPathCredential, SsuPathPlugin},
@@ -94,6 +98,9 @@ pub enum SsufidPluginRegistry {
     CseGraduate(CseGraduatePlugin),
     CseEmployment(CseEmploymentPlugin),
     Media(MediaPlugin),
+    SwBachelor(SwBachelorPlugin),
+    SwGraduate(SwGraduatePlugin),
+    SwEmployment(SwEmploymentPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -121,6 +128,15 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::Media(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SwBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SwGraduate(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SwEmployment(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -169,6 +185,18 @@ fn construct_tasks(
         (
             MediaPlugin::IDENTIFIER,
             SsufidPluginRegistry::Media(MediaPlugin),
+        ),
+        (
+            SwBachelorPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SwBachelor(SwBachelorPlugin::default()),
+        ),
+        (
+            SwGraduatePlugin::IDENTIFIER,
+            SsufidPluginRegistry::SwGraduate(SwGraduatePlugin::default()),
+        ),
+        (
+            SwEmploymentPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SwEmployment(SwEmploymentPlugin::default()),
         ),
     ];
 

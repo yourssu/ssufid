@@ -1,0 +1,49 @@
+use crate::{
+    PluginError,
+    core::{SsufidPlugin, SsufidPost},
+};
+
+use crate::plugins::common::it_crawler::ITCrawler;
+
+pub struct SwGraduatePlugin {
+    crawler: ITCrawler<Self>,
+}
+
+impl SsufidPlugin for SwGraduatePlugin {
+    const IDENTIFIER: &'static str = "sw.ssu.ac.kr/graduate";
+    const TITLE: &'static str = "숭실대학교 컴퓨터학부 취업정보";
+    const DESCRIPTION: &'static str = "숭실대학교 컴퓨터학부 홈페이지의 취업정보를 제공합니다.";
+    const BASE_URL: &'static str = "https://sw.ssu.ac.kr/bbs/board.php?bo_table=gra_notice";
+
+    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        self.crawler.crawl(posts_limit).await
+    }
+}
+
+impl Default for SwGraduatePlugin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SwGraduatePlugin {
+    fn new() -> Self {
+        Self {
+            crawler: ITCrawler::new(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_crawl() {
+        let posts_limit = 100;
+        let plugin = SwGraduatePlugin::new();
+        let posts = plugin.crawl(posts_limit).await.unwrap();
+        assert_eq!(posts.len(), posts_limit as usize);
+        // println!("{:#?}", posts);
+    }
+}
