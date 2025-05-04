@@ -2,10 +2,11 @@ use std::borrow::Cow;
 
 use log::{info, warn};
 use scraper::{Html, Selector};
+use thiserror::Error;
 use url::Url;
 
 use crate::{
-    core::{SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost},
     error::PluginError,
 };
 use time::{Date, format_description, macros::offset};
@@ -60,6 +61,14 @@ impl Default for SsuCatchPlugin {
     }
 }
 
+#[derive(Debug, Error)]
+enum SsuCatchMetadataError {
+    #[error("URL not found")]
+    UrlNotFound,
+    #[error("ID is empty for URL: {0}")]
+    IdEmpty(String),
+}
+
 impl SsuCatchPlugin {
     const POSTS_PER_PAGE: u32 = 15; // 페이지당 게시글 수
     const DATE_FORMAT: &'static str = "[year]년 [month padding:none]월 [day padding:none]일";
@@ -93,12 +102,12 @@ impl SsuCatchPlugin {
         let posts_metadata = notice_list
             .select(&self.selectors.li)
             .skip(1)
-            .filter_map(|li| {
+            .map(|li| {
                 let url = li
                     .select(&self.selectors.url)
                     .next()
                     .and_then(|element| element.value().attr("href"))
-                    .unwrap_or_default()
+                    .ok_or(SsuCatchMetadataError::UrlNotFound)?
                     .to_string();
 
                 let id = Url::parse(&url)
@@ -113,8 +122,7 @@ impl SsuCatchPlugin {
                     .to_string();
 
                 if id.is_empty() {
-                    warn!("[{}] ID is empty for URL: {}", Self::IDENTIFIER, url);
-                    return None;
+                    return Err(SsuCatchMetadataError::IdEmpty(url));
                 }
 
                 let author = li
@@ -123,7 +131,12 @@ impl SsuCatchPlugin {
                     .map(|element| element.text().collect::<String>().trim().to_string())
                     .unwrap_or_default();
 
-                Some(SsuCatchMetadata { id, url, author })
+                Ok(SsuCatchMetadata { id, url, author })
+            })
+            .filter_map(|result| {
+                result
+                    .inspect_err(|e| warn!("[{}] {:?}", Self::IDENTIFIER, e.to_string()))
+                    .ok()
             })
             .collect();
 
@@ -157,17 +170,19 @@ impl SsuCatchPlugin {
             .filter(|text| !text.is_empty())
             .collect();
 
-        let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
-        let date_string = document
-            .select(&self.selectors.created_at)
-            .next()
-            .map(|element| element.text().collect::<String>().trim().to_string())
-            .unwrap_or_default();
+        let created_at = {
+            let date_format = format_description::parse(Self::DATE_FORMAT).unwrap();
+            let date_string = document
+                .select(&self.selectors.created_at)
+                .next()
+                .map(|element| element.text().collect::<String>().trim().to_string())
+                .unwrap_or_default();
 
-        let created_at = Date::parse(&date_string, &date_format)
-            .unwrap()
-            .midnight()
-            .assume_offset(offset!(+09:00));
+            Date::parse(&date_string, &date_format)
+                .unwrap()
+                .midnight()
+                .assume_offset(offset!(+09:00))
+        };
 
         let thumbnail = document
             .select(&self.selectors.thumbnail)
@@ -176,20 +191,11 @@ impl SsuCatchPlugin {
             .unwrap_or_default()
             .to_string();
 
-        let raw_content = document
+        let content = document
             .select(&self.selectors.content)
             .next()
-            .map(|div| div.text().collect::<String>())
+            .map(|p| p.html())
             .unwrap_or_default();
-
-        let content = raw_content
-            // &nbsp 제거
-            .replace('\u{a0}', " ")
-            .lines()
-            .map(|line| line.trim())
-            .filter(|line| !line.is_empty())
-            .collect::<Vec<&str>>()
-            .join("\n");
 
         let attachments = document
             .select(&self.selectors.attachments)
@@ -197,9 +203,9 @@ impl SsuCatchPlugin {
                 element.value().attr("href").map(|href| {
                     let url = format!("{}{}", Self::BASE_URL, href);
                     let name = element.text().collect::<String>().trim().to_string();
-                    crate::core::Attachment {
+                    Attachment {
                         url,
-                        name: if name.is_empty() { None } else { Some(name) },
+                        name: name.is_empty().then_some(name),
                         mime_type: None,
                     }
                 })
@@ -215,11 +221,7 @@ impl SsuCatchPlugin {
             category,
             created_at,
             updated_at: None,
-            thumbnail: if thumbnail.is_empty() {
-                None
-            } else {
-                Some(thumbnail)
-            },
+            thumbnail: thumbnail.is_empty().then_some(thumbnail),
             content,
             attachments,
             metadata: None,
