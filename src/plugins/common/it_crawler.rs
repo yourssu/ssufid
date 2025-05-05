@@ -52,7 +52,7 @@ impl ItSelectors {
             author: Selector::parse("td.td_name.sv_use > span").unwrap(),
             created_at: Selector::parse("td.td_datetime").unwrap(),
             category: Selector::parse("td.td_num2 > p").unwrap(),
-            title: Selector::parse("#bo_v_title > span").unwrap(),
+            title: Selector::parse("#bo_v_title > span.bo_v_tit").unwrap(),
             thumbnail: Selector::parse("#bo_v_con img").unwrap(),
             content: Selector::parse("#bo_v_con").unwrap(),
             attachments: Selector::parse("#bo_v_file > ul > li > a").unwrap(),
