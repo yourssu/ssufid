@@ -1,7 +1,7 @@
 // IT대학의 컴퓨터학부, 소프트웨어학부, 정보보호학과에
 // 해당하는 플러그인에서 사용되는 공통 모듈입니다.
 
-use futures::{TryStreamExt, stream::FuturesUnordered};
+use futures::{TryStreamExt, stream::FuturesOrdered};
 use log::{info, warn};
 use scraper::{Html, Selector};
 use thiserror::Error;
@@ -102,7 +102,7 @@ where
         metadata_list
             .iter()
             .map(|metadata| self.fetch_post(metadata))
-            .collect::<FuturesUnordered<_>>()
+            .collect::<FuturesOrdered<_>>()
             .try_collect::<Vec<_>>()
             .await
     }
