@@ -205,7 +205,7 @@ impl SsuCatchPlugin {
                     let name = element.text().collect::<String>().trim().to_string();
                     Attachment {
                         url,
-                        name: name.is_empty().then_some(name),
+                        name: (!name.is_empty()).then_some(name),
                         mime_type: None,
                     }
                 })
