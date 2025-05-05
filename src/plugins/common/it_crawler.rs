@@ -227,9 +227,10 @@ where
             .select(&self.selectors.title)
             .next()
             .map(|span| span.text().collect::<String>().trim().to_string())
-            .ok_or(PluginError::parse::<T>(
-                "Title element not found".to_string(),
-            ))?;
+            .ok_or(PluginError::parse::<T>(format!(
+                "Title element not found: URL {}",
+                metadata.url
+            )))?;
 
         let thumbnail = document
             .select(&self.selectors.thumbnail)
@@ -239,9 +240,10 @@ where
         let content = document
             .select(&self.selectors.content)
             .next()
-            .ok_or(PluginError::parse::<T>(
-                "Content element not found".to_string(),
-            ))?
+            .ok_or(PluginError::parse::<T>(format!(
+                "Content element not found: URL {}",
+                metadata.url
+            )))?
             .child_elements()
             .map(|p| p.html())
             .collect::<Vec<String>>()
