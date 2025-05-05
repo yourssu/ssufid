@@ -12,6 +12,7 @@ use ssufid::{
             graduate::CseGraduatePlugin,
         },
         media::MediaPlugin,
+        sec::SecPlugin,
         ssu_catch::SsuCatchPlugin,
         ssu_path::{SsuPathCredential, SsuPathPlugin},
         sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
@@ -97,6 +98,7 @@ pub enum SsufidPluginRegistry {
     Media(MediaPlugin),
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
+    SecBachelor(SecPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -130,6 +132,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SwGraduate(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SecBachelor(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -186,6 +191,10 @@ fn construct_tasks(
         (
             SwGraduatePlugin::IDENTIFIER,
             SsufidPluginRegistry::SwGraduate(SwGraduatePlugin::default()),
+        ),
+        (
+            SecPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
         ),
     ];
 
