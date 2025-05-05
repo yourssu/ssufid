@@ -4,29 +4,29 @@ use crate::{
     core::{SsufidPlugin, SsufidPost},
 };
 
-pub struct CseBachelorPlugin {
+pub struct SwBachelorPlugin {
     crawler: ItCrawler<Self>,
 }
 
-impl SsufidPlugin for CseBachelorPlugin {
-    const IDENTIFIER: &'static str = "cse.ssu.ac.kr/bachelor";
-    const TITLE: &'static str = "숭실대학교 컴퓨터학부 학사 공지사항";
+impl SsufidPlugin for SwBachelorPlugin {
+    const IDENTIFIER: &'static str = "sw.ssu.ac.kr/bachelor";
+    const TITLE: &'static str = "숭실대학교 소프트웨어학부 학사 공지사항";
     const DESCRIPTION: &'static str =
-        "숭실대학교 컴퓨터학부 홈페이지의 학사 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "https://cse.ssu.ac.kr/bbs/board.php?bo_table=notice";
+        "숭실대학교 소프트웨어 홈페이지의 학사 공지사항을 제공합니다.";
+    const BASE_URL: &'static str = "https://sw.ssu.ac.kr/bbs/board.php?bo_table=notice";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         self.crawler.crawl(posts_limit).await
     }
 }
 
-impl Default for CseBachelorPlugin {
+impl Default for SwBachelorPlugin {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CseBachelorPlugin {
+impl SwBachelorPlugin {
     fn new() -> Self {
         Self {
             crawler: ItCrawler::new(),
@@ -41,7 +41,7 @@ mod tests {
     #[tokio::test]
     async fn test_crawl() {
         let posts_limit = 100;
-        let plugin = CseBachelorPlugin::new();
+        let plugin = SwBachelorPlugin::new();
         let posts = plugin.crawl(posts_limit).await.unwrap();
         assert_eq!(posts.len(), posts_limit as usize);
         // println!("{:#?}", posts);

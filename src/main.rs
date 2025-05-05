@@ -14,6 +14,7 @@ use ssufid::{
         media::MediaPlugin,
         ssu_catch::SsuCatchPlugin,
         ssu_path::{SsuPathCredential, SsuPathPlugin},
+        sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
     },
 };
 use tokio::io::AsyncWriteExt;
@@ -94,6 +95,8 @@ pub enum SsufidPluginRegistry {
     CseGraduate(CseGraduatePlugin),
     CseEmployment(CseEmploymentPlugin),
     Media(MediaPlugin),
+    SwBachelor(SwBachelorPlugin),
+    SwGraduate(SwGraduatePlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -123,6 +126,12 @@ impl SsufidPluginRegistry {
             SsufidPluginRegistry::Media(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
+            SsufidPluginRegistry::SwBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SwGraduate(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
         }
     }
 }
@@ -145,7 +154,7 @@ fn construct_tasks(
     let tasks = [
         (
             SsuCatchPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::new()),
+            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::default()),
         ),
         (
             SsuPathPlugin::IDENTIFIER,
@@ -156,19 +165,27 @@ fn construct_tasks(
         ),
         (
             CseBachelorPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::new()),
+            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::default()),
         ),
         (
             CseGraduatePlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::new()),
+            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::default()),
         ),
         (
             CseEmploymentPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::new()),
+            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::default()),
         ),
         (
             MediaPlugin::IDENTIFIER,
             SsufidPluginRegistry::Media(MediaPlugin),
+        ),
+        (
+            SwBachelorPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SwBachelor(SwBachelorPlugin::default()),
+        ),
+        (
+            SwGraduatePlugin::IDENTIFIER,
+            SsufidPluginRegistry::SwGraduate(SwGraduatePlugin::default()),
         ),
     ];
 
