@@ -19,7 +19,7 @@ use crate::{
 use scraper::Element;
 
 #[derive(Debug)]
-struct ITMetadata {
+struct ItMetadata {
     category: Option<String>,
     id: String,
     url: String,
@@ -27,7 +27,7 @@ struct ITMetadata {
     created_at: time::OffsetDateTime,
 }
 
-struct ITSelectors {
+struct ItSelectors {
     // in the notice list page
     table: Selector,
     tr: Selector,
@@ -43,7 +43,7 @@ struct ITSelectors {
     attachments: Selector,
 }
 
-impl ITSelectors {
+impl ItSelectors {
     fn new() -> Self {
         Self {
             table: Selector::parse("#bo_list > div.notice_list > table > tbody").unwrap(),
@@ -61,7 +61,7 @@ impl ITSelectors {
 }
 
 #[derive(Error, Debug)]
-enum ITMetadataError {
+enum ItMetadataError {
     #[error("URL not found error")]
     UrlNotFound,
     #[error("URL parse failed for {0}")]
@@ -76,18 +76,18 @@ enum ITMetadataError {
 
 const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
-pub(crate) struct ITCrawler<T: SsufidPlugin> {
-    selectors: ITSelectors,
+pub(crate) struct ItCrawler<T: SsufidPlugin> {
+    selectors: ItSelectors,
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<T> ITCrawler<T>
+impl<T> ItCrawler<T>
 where
     T: SsufidPlugin,
 {
     pub(crate) fn new() -> Self {
         Self {
-            selectors: ITSelectors::new(),
+            selectors: ItSelectors::new(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -108,10 +108,10 @@ where
     }
 
     /// 1 페이지부터 순서대로 최대 `posts_limit`개의 메타데이터를 반환합니다.
-    async fn fetch_metadata_list(&self, posts_limit: u32) -> Result<Vec<ITMetadata>, PluginError> {
+    async fn fetch_metadata_list(&self, posts_limit: u32) -> Result<Vec<ItMetadata>, PluginError> {
         let mut remain = posts_limit as usize;
         let mut page = 1;
-        let mut metadata_list: Vec<ITMetadata> = vec![];
+        let mut metadata_list: Vec<ItMetadata> = vec![];
 
         while remain > 0 {
             info!("[{}] page: {}", T::IDENTIFIER, page);
@@ -120,7 +120,7 @@ where
                 .await?
                 .into_iter()
                 .take(remain)
-                .collect::<Vec<ITMetadata>>();
+                .collect::<Vec<ItMetadata>>();
 
             if metadata.is_empty() {
                 break;
@@ -135,7 +135,7 @@ where
     }
 
     /// `page` 페이지의 메타데이터 리스트를 반환합니다.
-    async fn fetch_metadata(&self, page: u32) -> Result<Vec<ITMetadata>, PluginError> {
+    async fn fetch_metadata(&self, page: u32) -> Result<Vec<ItMetadata>, PluginError> {
         let page_url = format!("{}/&page={}", T::BASE_URL, page);
 
         let html = reqwest::get(page_url)
@@ -166,15 +166,15 @@ where
                     .select(&self.selectors.url)
                     .next()
                     .and_then(|a| a.value().attr("href"))
-                    .ok_or(ITMetadataError::UrlNotFound)?
+                    .ok_or(ItMetadataError::UrlNotFound)?
                     .to_string();
 
                 let id = Url::parse(&url)
-                    .map_err(|_| ITMetadataError::UrlParseError(url.clone()))?
+                    .map_err(|_| ItMetadataError::UrlParseError(url.clone()))?
                     .query_pairs()
                     .find(|(key, value)| key == "wr_id" && !value.is_empty())
                     .map(|(_, value)| value.to_string())
-                    .ok_or(ITMetadataError::IdEmpty(url.clone()))?;
+                    .ok_or(ItMetadataError::IdEmpty(url.clone()))?;
 
                 let author = tr
                     .select(&self.selectors.author)
@@ -186,13 +186,13 @@ where
                         .select(&self.selectors.created_at)
                         .next()
                         .map(|element| element.text().collect::<String>().trim().to_string())
-                        .ok_or(ITMetadataError::DateNotFound(id.clone()))?;
+                        .ok_or(ItMetadataError::DateNotFound(id.clone()))?;
                     Date::parse(&date, DATE_FORMAT)
-                        .map_err(|_| ITMetadataError::DateParseError(date.clone()))?
+                        .map_err(|_| ItMetadataError::DateParseError(date.clone()))?
                         .midnight()
                         .assume_offset(offset!(+09:00))
                 };
-                Ok(ITMetadata {
+                Ok(ItMetadata {
                     category,
                     id,
                     url,
@@ -200,20 +200,20 @@ where
                     created_at,
                 })
             })
-            .filter_map(|result: Result<ITMetadata, ITMetadataError>| {
+            .filter_map(|result: Result<ItMetadata, ItMetadataError>| {
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
                 result
                     .inspect_err(|e| warn!("[{}] {:?}", T::IDENTIFIER, e))
                     .ok()
             })
-            .collect::<Vec<ITMetadata>>();
+            .collect::<Vec<ItMetadata>>();
 
         Ok(posts_metadata)
     }
 
     /// `metadata`에 해당하는 게시글의 내용을 크롤링하여 반환합니다.
-    async fn fetch_post(&self, metadata: &ITMetadata) -> Result<SsufidPost, PluginError> {
+    async fn fetch_post(&self, metadata: &ItMetadata) -> Result<SsufidPost, PluginError> {
         let html = reqwest::get(&metadata.url)
             .await
             .map_err(|e| PluginError::request::<T>(e.to_string()))?
@@ -283,7 +283,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_crawler_fetch_metadata() {
-        let crawler: ITCrawler<CseBachelorPlugin> = ITCrawler::new();
+        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
         let metadata_list = crawler.fetch_metadata(1).await.unwrap();
@@ -307,7 +307,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_crawler_fetch_post() {
-        let crawler: ITCrawler<CseBachelorPlugin> = ITCrawler::new();
+        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
         let metadata_list = crawler.fetch_metadata(1).await.unwrap();
@@ -322,7 +322,7 @@ mod tests {
     #[tokio::test]
     async fn test_crawler_fetch_metadata_list() {
         let posts_limit = 100;
-        let crawler: ITCrawler<CseBachelorPlugin> = ITCrawler::new();
+        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
 
         let metadata_list = crawler.fetch_metadata_list(posts_limit).await.unwrap();
         assert_eq!(metadata_list.len(), posts_limit as usize);

@@ -3,10 +3,10 @@ use crate::{
     core::{SsufidPlugin, SsufidPost},
 };
 
-use crate::plugins::common::it_crawler::ITCrawler;
+use crate::plugins::common::it_crawler::ItCrawler;
 
 pub struct CseEmploymentPlugin {
-    crawler: ITCrawler<Self>,
+    crawler: ItCrawler<Self>,
 }
 
 impl SsufidPlugin for CseEmploymentPlugin {
@@ -29,7 +29,7 @@ impl Default for CseEmploymentPlugin {
 impl CseEmploymentPlugin {
     fn new() -> Self {
         Self {
-            crawler: ITCrawler::new(),
+            crawler: ItCrawler::new(),
         }
     }
 }
