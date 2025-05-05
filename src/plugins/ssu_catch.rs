@@ -221,7 +221,7 @@ impl SsuCatchPlugin {
             category,
             created_at,
             updated_at: None,
-            thumbnail: thumbnail.is_empty().then_some(thumbnail),
+            thumbnail: (!thumbnail.is_empty()).then_some(thumbnail),
             content,
             attachments,
             metadata: None,
