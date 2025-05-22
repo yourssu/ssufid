@@ -4,20 +4,17 @@ use clap::Parser;
 use env_logger::{Builder, Env};
 use futures::future::join_all;
 use log::error;
-use ssufid::{
-    core::{SsufidCore, SsufidPlugin},
-    plugins::{
-        cse::{
-            bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin,
-            graduate::CseGraduatePlugin,
-        },
-        media::MediaPlugin,
-        sec::SecPlugin,
-        ssu_catch::SsuCatchPlugin,
-        ssu_path::{SsuPathCredential, SsuPathPlugin},
-        sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
+use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid_itsites::{
+    cse::{
+        bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin, graduate::CseGraduatePlugin,
     },
+    sec::SecPlugin,
+    sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
 };
+use ssufid_media::MediaPlugin;
+use ssufid_ssucatch::SsuCatchPlugin;
+use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
 
 #[derive(Parser, Debug)]

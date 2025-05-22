@@ -12,11 +12,11 @@ use time::{
 };
 use url::Url;
 
-use crate::{
+use scraper::Element;
+use ssufid::{
     PluginError,
     core::{Attachment, SsufidPlugin, SsufidPost},
 };
-use scraper::Element;
 
 #[derive(Debug)]
 struct ItMetadata {
@@ -279,7 +279,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::plugins::cse::bachelor::CseBachelorPlugin;
+    use crate::cse::bachelor::CseBachelorPlugin;
 
     use super::*;
 

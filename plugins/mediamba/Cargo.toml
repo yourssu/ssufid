@@ -1,0 +1,37 @@
+[package]
+name = "ssufid_mediamba"
+version = "0.1.0"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+
+[dependencies]
+reqwest = { workspace = true, features = [
+  "charset",
+  "http2",
+  "macos-system-configuration",
+  "rustls-tls",
+  "cookies",
+  "gzip",
+  "brotli",
+] }
+scraper = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true, features = [
+  "serde",
+  "macros",
+  "formatting",
+  "parsing",
+] }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
+futures = { workspace = true }
+log = { workspace = true }
+ssufid = { workspace = true }
+
+[dev-dependencies]
+time = { workspace = true, features = ["macros"] }

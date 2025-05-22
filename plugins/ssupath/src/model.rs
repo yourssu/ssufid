@@ -8,10 +8,9 @@ use serde_yaml::Mapping;
 use table::{SsuPathCourseTable, SsuPathProgramTable};
 use time::OffsetDateTime;
 
-use crate::{
-    PluginError,
-    plugins::ssu_path::{SsuPathPlugin, utils::ElementRefExt as _},
-};
+use ssufid::PluginError;
+
+use crate::{SsuPathPlugin, utils::ElementRefExt as _};
 
 use super::{
     SsuPathPluginError,

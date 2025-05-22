@@ -4,14 +4,12 @@ use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
 use time::OffsetDateTime;
 
-use crate::{
-    PluginError,
-    plugins::ssu_path::{
-        SsuPathPlugin, SsuPathPluginError,
-        utils::{ElementRefExt, OptionExt, ParseDateRange as _, serialize_date_range},
-    },
-};
+use ssufid::PluginError;
 
+use crate::{
+    SsuPathPlugin, SsuPathPluginError,
+    utils::{ElementRefExt, OptionExt, ParseDateRange as _, serialize_date_range},
+};
 pub struct SsuPathProgramTable {
     pub title: String,
     pub content: String,

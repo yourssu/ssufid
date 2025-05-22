@@ -5,7 +5,7 @@ use scraper::{Html, Selector};
 use thiserror::Error;
 use url::Url;
 
-use crate::{
+use ssufid::{
     core::{Attachment, SsufidPlugin, SsufidPost},
     error::PluginError,
 };

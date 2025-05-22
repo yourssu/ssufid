@@ -1,5 +1,5 @@
-use crate::plugins::common::it_crawler::ItCrawler;
-use crate::{
+use crate::common::it_crawler::ItCrawler;
+use ssufid::{
     PluginError,
     core::{SsufidPlugin, SsufidPost},
 };
