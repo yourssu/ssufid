@@ -7,7 +7,7 @@ use time::{
     macros::{format_description, offset},
 };
 
-use crate::{
+use ssufid::{
     PluginError,
     core::{Attachment, SsufidPlugin, SsufidPost},
 };

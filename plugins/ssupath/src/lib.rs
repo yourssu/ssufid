@@ -11,7 +11,7 @@ use sso::SsuSsoError;
 use url::Url;
 use utils::default_header;
 
-use crate::{
+use ssufid::{
     PluginError,
     core::{SsufidPlugin, SsufidPost},
 };
@@ -230,7 +230,7 @@ mod test {
     #[tokio::test]
     #[ignore = "Requires valid credentials"]
     async fn test_authorization() {
-        dotenv::dotenv().ok();
+        dotenvy::dotenv().ok();
         let plugin = SsuPathPlugin::new(SsuPathCredential::Password(
             std::env::var("SSU_ID").unwrap(),
             std::env::var("SSU_PASSWORD").unwrap(),

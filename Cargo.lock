@@ -499,10 +499,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
+name = "dotenvy"
+version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dtoa"
@@ -2064,11 +2064,6 @@ dependencies = [
 name = "ssufid"
 version = "0.1.0"
 dependencies = [
- "clap",
- "color-eyre",
- "dotenv",
- "env_logger",
- "eyre",
  "futures",
  "log",
  "mime_guess",
@@ -2077,7 +2072,114 @@ dependencies = [
  "scraper",
  "serde",
  "serde_json",
+ "thiserror",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ssufid_cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "env_logger",
+ "eyre",
+ "futures",
+ "log",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "ssufid_itsites",
+ "ssufid_media",
+ "ssufid_mediamba",
+ "ssufid_ssucatch",
+ "ssufid_ssupath",
+ "time",
+ "tokio",
+]
+
+[[package]]
+name = "ssufid_itsites"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "log",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ssufid_media"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "log",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ssufid_mediamba"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "log",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ssufid_ssucatch"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "log",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "url",
+]
+
+[[package]]
+name = "ssufid_ssupath"
+version = "0.1.0"
+dependencies = [
+ "dotenvy",
+ "futures",
+ "log",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
  "serde_yaml",
+ "ssufid",
  "thiserror",
  "time",
  "tokio",
@@ -2291,9 +2393,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.44.2"
+version = "1.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6b88822cbe49de4185e3a4cbf8321dd487cf5fe0c5c65695fef6346371e9c48"
+checksum = "2513ca694ef9ede0fb23fe71a4ee4107cb102b9dc1930f6d0fd77aae068ae165"
 dependencies = [
  "backtrace",
  "bytes",
