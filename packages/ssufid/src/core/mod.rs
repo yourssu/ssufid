@@ -152,7 +152,11 @@ impl SsufidCore {
             title: T::TITLE.to_string(),
             source: T::BASE_URL.to_string(),
             description: T::DESCRIPTION.to_string(),
-            items: updated_entries,
+            items: updated_entries
+                .into_iter()
+                .rev()
+                .take(Self::POST_COUNT_LIMIT as usize)
+                .collect(),
         })
     }
 
@@ -188,15 +192,18 @@ impl SsufidCore {
 }
 
 fn merge_entries(
-    old_entries: impl IntoIterator<Item = SsufidPost>,
-    new_entries: impl IntoIterator<Item = SsufidPost>,
+    old_entries: Vec<SsufidPost>,
+    mut new_entries: Vec<SsufidPost>,
 ) -> Vec<SsufidPost> {
     let mut old_entries_map = old_entries
         .into_iter()
         .map(|post: SsufidPost| (post.id.clone(), post))
         .collect::<IndexMap<String, SsufidPost>>();
-    old_entries_map.sort_by(|_k, v, _k2, v2| v.partial_cmp(v2).unwrap());
+    old_entries_map
+        .sort_by(|_k, v, _k2, v2| v.partial_cmp(v2).unwrap_or(std::cmp::Ordering::Equal));
     let current_time = time::OffsetDateTime::now_utc();
+    new_entries.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal));
+    let new_entries = new_entries;
     for post in new_entries.into_iter() {
         if post.updated_at.is_some() {
             old_entries_map.insert(post.id.clone(), post);
