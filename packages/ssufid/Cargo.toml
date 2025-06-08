@@ -23,7 +23,7 @@ reqwest = { workspace = true, features = [
 ] }
 scraper = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
 thiserror = { workspace = true }
 time = { workspace = true, features = [
     "serde",
@@ -37,6 +37,7 @@ url = { workspace = true }
 futures = { workspace = true }
 log = { workspace = true }
 mime_guess = { workspace = true }
+indexmap = { version = "2.9.0", features = ["serde"] }
 
 [dev-dependencies]
 time = { workspace = true, features = ["macros"] }

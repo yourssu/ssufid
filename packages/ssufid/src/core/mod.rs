@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use indexmap::IndexMap;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use time;
@@ -47,6 +48,12 @@ pub struct SsufidPost {
     #[serde(default)]
     pub attachments: Vec<Attachment>,
     pub metadata: Option<BTreeMap<String, String>>,
+}
+
+impl PartialOrd for SsufidPost {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.created_at.cmp(&other.created_at))
+    }
 }
 
 impl SsufidPost {
@@ -131,11 +138,10 @@ impl SsufidCore {
             let cache = cache.read().await;
             #[allow(unused_variables)]
             let old_entries = match cache.get(T::IDENTIFIER) {
-                Some(entries) => entries,
-                None => &self.read_cache(T::IDENTIFIER).await?,
+                Some(entries) => entries.clone(),
+                None => self.read_cache(T::IDENTIFIER).await?,
             };
-
-            inject_update_date(old_entries, new_entries)
+            merge_entries(old_entries, new_entries)
         };
         {
             // write lock scope
@@ -181,39 +187,37 @@ impl SsufidCore {
     }
 }
 
-fn inject_update_date(
-    old_entries: &[SsufidPost],
+fn merge_entries(
+    old_entries: impl IntoIterator<Item = SsufidPost>,
     new_entries: impl IntoIterator<Item = SsufidPost>,
 ) -> Vec<SsufidPost> {
-    let old_entries_map = old_entries
-        .iter()
-        .map(|post: &SsufidPost| (post.id.clone(), post))
-        .collect::<HashMap<String, &SsufidPost>>();
-    let current_time = time::OffsetDateTime::now_utc();
-    new_entries
+    let mut old_entries_map = old_entries
         .into_iter()
-        .map(|post| {
-            // 업데이트 정보를 플러그인이 제공했다면 자체 계산 제외
-            if post.updated_at.is_some() {
-                return post;
-            }
-            if let Some(old) = old_entries_map.get(&post.id) {
-                let old = *old;
-                if old.contents_eq(&post) {
-                    return SsufidPost {
-                        updated_at: old.updated_at,
+        .map(|post: SsufidPost| (post.id.clone(), post))
+        .collect::<IndexMap<String, SsufidPost>>();
+    old_entries_map.sort_by(|_k, v, _k2, v2| v.partial_cmp(v2).unwrap());
+    let current_time = time::OffsetDateTime::now_utc();
+    for post in new_entries.into_iter() {
+        if post.updated_at.is_some() {
+            old_entries_map.insert(post.id.clone(), post);
+            continue;
+        }
+
+        if let Some(old) = old_entries_map.get(&post.id) {
+            if !old.contents_eq(&post) {
+                old_entries_map.insert(
+                    post.id.clone(),
+                    SsufidPost {
+                        updated_at: Some(current_time),
                         ..post
-                    };
-                }
-                SsufidPost {
-                    updated_at: Some(current_time),
-                    ..post
-                }
-            } else {
-                post
+                    },
+                );
+                continue;
             }
-        })
-        .collect()
+        }
+        old_entries_map.insert(post.id.clone(), post);
+    }
+    old_entries_map.into_values().collect()
 }
 
 pub trait SsufidPlugin {
@@ -231,13 +235,13 @@ pub trait SsufidPlugin {
 // 임시 테스트
 #[cfg(test)]
 mod tests {
-    use std::vec;
+    use std::{time::Duration, vec};
 
     use time::OffsetDateTime;
     use time::macros::datetime;
     use tokio::io::AsyncWriteExt;
 
-    use super::{SsufidCore, SsufidPost, inject_update_date};
+    use super::{SsufidCore, SsufidPost, merge_entries};
 
     #[tokio::test]
     async fn test_read_cache() {
@@ -307,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inject_update_date() {
+    fn test_merge_entries() {
         let now = OffsetDateTime::now_utc();
         let old_entries = vec![
             SsufidPost {
@@ -317,7 +321,7 @@ mod tests {
                 title: "Old Title 1".to_string(),
                 description: Some("Description for 1".to_string()),
                 category: vec!["Category 1".to_string()],
-                created_at: now,
+                created_at: now - Duration::from_secs(1),
                 updated_at: None,
                 thumbnail: Some("http://example.com/thumb1.jpg".to_string()),
                 content: "Old Content 1".to_string(),
@@ -346,6 +350,30 @@ mod tests {
                 content: "Old Content 2".to_string(),
                 attachments: vec![],
                 metadata: None,
+            },
+            // 기존 포스트는 유지되어야 함, 순서는 create_at 기준 정렬
+            SsufidPost {
+                id: "0".to_string(),
+                url: "http://example.com/1".to_string(),
+                author: Some("Author 1".to_string()),
+                title: "Old Title 1".to_string(),
+                description: Some("Description for 1".to_string()),
+                category: vec!["Category 1".to_string()],
+                created_at: now - Duration::from_secs(2),
+                updated_at: None,
+                thumbnail: Some("http://example.com/thumb1.jpg".to_string()),
+                content: "Old Content 1".to_string(),
+                attachments: vec![super::Attachment {
+                    url: "http://example.com/attach1.doc".to_string(),
+                    name: None,
+                    mime_type: None,
+                }],
+                metadata: Some(
+                    [("meta_key_1".to_string(), "meta_value_1".to_string())]
+                        .iter()
+                        .cloned()
+                        .collect(),
+                ),
             },
         ];
 
@@ -384,7 +412,7 @@ mod tests {
                 title: "Updated Title 2".to_string(), // 제목 변경 (contents_eq에 영향 있음!)
                 description: Some("Description for 2 Updated".to_string()), // Description 변경 (contents_eq에 영향 없음)
                 category: vec!["Category 2".to_string()],                   // Same
-                created_at: now,
+                created_at: now + Duration::from_secs(1),                   // created_at 변경
                 updated_at: None, // Should be set by inject_update_date
                 thumbnail: Some("http://example.com/thumb2_new.jpg".to_string()), // Thumbnail 변경 (contents_eq에 영향 없음)
                 content: "Old Content 2".to_string(),                             // Same
@@ -410,7 +438,7 @@ mod tests {
                 title: "New Title 3".to_string(),
                 description: Some("Description for 3".to_string()),
                 category: vec!["Category 3".to_string()],
-                created_at: now,
+                created_at: now + Duration::from_secs(2),
                 updated_at: None, // Should remain None
                 thumbnail: None,
                 content: "New Content 3".to_string(),
@@ -425,8 +453,8 @@ mod tests {
                 title: "Title 4".to_string(),
                 description: Some("Description for 4".to_string()),
                 category: vec!["Category 4".to_string()],
-                created_at: now,
-                updated_at: Some(now), // Pre-set update time, should be kept
+                created_at: now + Duration::from_secs(3),
+                updated_at: Some(now + Duration::from_secs(3)), // Pre-set update time, should be kept
                 thumbnail: Some("http://example.com/thumb4.jpg".to_string()),
                 content: "Content 4".to_string(),
                 attachments: vec![],
@@ -434,23 +462,26 @@ mod tests {
             },
         ];
 
-        let result = inject_update_date(&old_entries, new_entries);
+        let result = merge_entries(old_entries, new_entries);
 
-        // Case 1: 내용이 같은 경우 updated_at이 None이어야 함
-        assert!(result[0].updated_at.is_none());
-        assert_eq!(result[0].title, "Old Title 1");
+        // Case 1: 기존 포스트는 그대로 유지되어야 함
+        assert_eq!(result[0].id, "0");
 
-        // Case 2: 내용이 다른 경우 updated_at이 설정되어야 함
-        assert!(result[1].updated_at.is_some());
-        assert_eq!(result[1].title, "Updated Title 2");
+        // Case 2: 내용이 같은 경우 updated_at이 None이어야 함
+        assert!(result[1].updated_at.is_none());
+        assert_eq!(result[1].title, "Old Title 1");
 
-        // Case 3: 새로운 포스트는 updated_at이 None이어야 함
-        assert!(result[2].updated_at.is_none());
-        assert_eq!(result[2].title, "New Title 3");
+        // Case 3: 내용이 다른 경우 updated_at이 설정되어야 함
+        assert!(result[2].updated_at.is_some());
+        assert_eq!(result[2].title, "Updated Title 2");
 
-        // Case 4: 이미 updated_at이 설정된 경우 그대로 유지되어야 함
-        assert_eq!(result[3].updated_at, Some(now));
-        assert_eq!(result[3].title, "Title 4");
+        // Case 4: 새로운 포스트는 updated_at이 None이어야 함
+        assert!(result[3].updated_at.is_none());
+        assert_eq!(result[3].title, "New Title 3");
+
+        // Case 5: 이미 updated_at이 설정된 경우 그대로 유지되어야 함
+        assert_eq!(result[4].updated_at, Some(now + Duration::from_secs(3)));
+        assert_eq!(result[4].title, "Title 4");
     }
 }
 
