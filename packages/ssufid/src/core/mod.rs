@@ -202,7 +202,7 @@ fn merge_entries(
     old_entries_map
         .sort_by(|_k, v, _k2, v2| v.partial_cmp(v2).unwrap_or(std::cmp::Ordering::Equal));
     let current_time = time::OffsetDateTime::now_utc();
-    new_entries.sort_by(|a, b| a.partial_cmp(&b).unwrap_or(std::cmp::Ordering::Equal));
+    new_entries.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let new_entries = new_entries;
     for post in new_entries.into_iter() {
         if post.updated_at.is_some() {
