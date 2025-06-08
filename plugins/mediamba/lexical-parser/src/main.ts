@@ -1,14 +1,16 @@
 import { JSDOM } from "https://jspm.dev/jsdom";
-import { createHeadlessEditor } from "npm:@lexical/headless";
-import { $generateHtmlFromNodes } from "npm:@lexical/html";
+import "npm:node-self";
 
 const dom = new JSDOM();
-
-const editor = createHeadlessEditor({ nodes: [] });
 
 globalThis.window = dom.window;
 // @ts-ignore: lexical uses `document` in a way that is not compatible with TypeScript
 globalThis.document = dom.window.document;
+
+import { createHeadlessEditor } from "npm:@lexical/headless";
+import { $generateHtmlFromNodes } from "npm:@lexical/html";
+
+const editor = createHeadlessEditor({ nodes: [] });
 
 export const toHtml = async (stateStr: string) => {
   const state = editor.parseEditorState(stateStr);
@@ -24,3 +26,6 @@ export const toHtml = async (stateStr: string) => {
     });
   });
 };
+
+const html = await toHtml(Deno.args[0]);
+console.log(html);

@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@luca/esbuild-deno-loader@*": "0.11.1",
     "jsr:@luca/esbuild-deno-loader@~0.11.1": "0.11.1",
+    "jsr:@std/assert@*": "1.0.13",
     "jsr:@std/assert@1": "1.0.13",
     "jsr:@std/bytes@^1.0.2": "1.0.6",
     "jsr:@std/encoding@^1.0.5": "1.0.10",
@@ -13,7 +14,8 @@
     "npm:@lexical/html@*": "0.31.1",
     "npm:@lexical/html@~0.31.1": "0.31.1",
     "npm:esbuild@*": "0.25.5",
-    "npm:esbuild@~0.25.5": "0.25.5"
+    "npm:esbuild@~0.25.5": "0.25.5",
+    "npm:node-self@^1.0.2": "1.0.2"
   },
   "jsr": {
     "@luca/esbuild-deno-loader@0.11.1": {
@@ -258,6 +260,9 @@
     },
     "lexical@0.31.1": {
       "integrity": "sha512-uS8yz3Soc+7h80OTXVhFSWflVJR6mqO7XoU8EXImDT1d8u8dVyitlCNs6kCz1HryTevcxHexHgGxf6kUg0IUgQ=="
+    },
+    "node-self@1.0.2": {
+      "integrity": "sha512-7oanohlazOw8RygP1OPmzAvJTLucwXKoioP4FMrzqnE6xUMM58i8aF18HDU0Hx5oxdsRLbmklieyjdNmvj1jHA=="
     }
   },
   "remote": {
@@ -463,7 +468,8 @@
       "jsr:@std/assert@1",
       "npm:@lexical/headless@~0.31.1",
       "npm:@lexical/html@~0.31.1",
-      "npm:esbuild@~0.25.5"
+      "npm:esbuild@~0.25.5",
+      "npm:node-self@^1.0.2"
     ]
   }
 }

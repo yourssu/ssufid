@@ -7,8 +7,9 @@ const _result = await esbuild.build({
       loader: "native",
     }),
   ],
+  platform: "node",
   entryPoints: ["./src/main.ts"],
-  outfile: "./dist/lexcial-parser.esm.js",
+  outfile: "./dist/lexical-parser.esm.js",
   bundle: true,
   format: "esm",
 });
