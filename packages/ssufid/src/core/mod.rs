@@ -215,6 +215,7 @@ fn merge_entries(
                 old_entries_map.insert(
                     post.id.clone(),
                     SsufidPost {
+                        created_at: old.created_at,
                         updated_at: Some(current_time),
                         ..post
                     },
