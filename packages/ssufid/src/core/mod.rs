@@ -220,8 +220,8 @@ fn merge_entries(
                         ..post
                     },
                 );
-                continue;
             }
+            continue; // 내용이 같으면 업데이트하지 않음
         }
         old_entries_map.insert(post.id.clone(), post);
     }
