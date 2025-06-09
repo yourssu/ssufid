@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use log::{info, warn};
 use scraper::{Html, Selector};
 use thiserror::Error;
 use url::Url;
@@ -135,7 +134,7 @@ impl SsuCatchPlugin {
             })
             .filter_map(|result| {
                 result
-                    .inspect_err(|e| warn!("[{}] {:?}", Self::IDENTIFIER, e.to_string()))
+                    .inspect_err(|e| tracing::warn!("[{}] {:?}", Self::IDENTIFIER, e.to_string()))
                     .ok()
             })
             .collect();
@@ -261,7 +260,7 @@ impl SsufidPlugin for SsuCatchPlugin {
 
         // 모든 페이지 크롤링이 완료될 때까지 대기
         let metadata_results = futures::future::join_all((1..=pages).map(|page| {
-            info!(
+            tracing::info!(
                 "[{}] Crawling post metadata from page: {}/{}",
                 Self::IDENTIFIER,
                 page,
@@ -316,7 +315,7 @@ mod tests {
 
         let first_post_metadata = &posts_metadata[0];
 
-        println!("First post metadata: {:?}", first_post_metadata);
+        tracing::info!("First post metadata: {:?}", first_post_metadata);
 
         // ID, URL이 올바르게 추출되었는지 확인
         assert!(!first_post_metadata.id.is_empty(), "ID should not be empty");
@@ -376,7 +375,7 @@ mod tests {
         // 마지막 페이지 번호 가져오기
         let last_page = ssu_catch_plugin.get_last_page_number(&html);
 
-        println!("Last page number: {}", last_page);
+        tracing::info!("Last page number: {}", last_page);
 
         // 페이지 번호가 1 이상인지 확인
         assert!(last_page >= 1, "Last page number should be at least 1");

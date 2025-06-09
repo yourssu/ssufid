@@ -30,7 +30,7 @@ time = { workspace = true, features = [
 tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
 futures = { workspace = true }
-log = { workspace = true }
+tracing = { workspace = true }
 ssufid = { workspace = true }
 
 [dev-dependencies]

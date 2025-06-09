@@ -2,7 +2,6 @@
 // 해당하는 플러그인에서 사용되는 공통 모듈입니다.
 
 use futures::{TryStreamExt, stream::FuturesOrdered};
-use log::{info, warn};
 use scraper::{Html, Selector};
 use thiserror::Error;
 use time::{
@@ -94,7 +93,7 @@ where
 
     pub(crate) async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let metadata_list = self.fetch_metadata_list(posts_limit).await?;
-        info!(
+        tracing::info!(
             "[{}] fetch {} post contents",
             T::IDENTIFIER,
             metadata_list.len()
@@ -114,7 +113,7 @@ where
         let mut metadata_list: Vec<ItMetadata> = vec![];
 
         while remain > 0 {
-            info!("[{}] page: {}", T::IDENTIFIER, page);
+            tracing::info!("[{}] page: {}", T::IDENTIFIER, page);
             let mut metadata = self
                 .fetch_metadata(page)
                 .await?
@@ -204,7 +203,7 @@ where
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
                 result
-                    .inspect_err(|e| warn!("[{}] {:?}", T::IDENTIFIER, e))
+                    .inspect_err(|e| tracing::warn!("[{}] {:?}", T::IDENTIFIER, e))
                     .ok()
             })
             .collect::<Vec<ItMetadata>>();
@@ -292,7 +291,7 @@ mod tests {
         assert!(!metadata_list.is_empty());
 
         for metadata in &metadata_list {
-            println!("{:?}", metadata);
+            tracing::info!("{:?}", metadata);
         }
 
         let first_metadata = &metadata_list[0];

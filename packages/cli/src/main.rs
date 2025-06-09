@@ -1,9 +1,7 @@
 use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
 use clap::Parser;
-use env_logger::{Builder, Env};
 use futures::future::join_all;
-use log::error;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_itsites::{
     cse::{
@@ -17,6 +15,7 @@ use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
+use tracing::level_filters::LevelFilter;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -52,7 +51,14 @@ struct SsufidDaemonOptions {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    Builder::from_env(Env::default().filter_or("RUST_LOG", "info")).init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .with_ansi(true)
+        .init();
 
     color_eyre::install()?;
     let options = SsufidDaemonOptions::parse();
@@ -81,7 +87,7 @@ async fn main() -> eyre::Result<()> {
         Ok(())
     } else {
         for err in &errors {
-            error!("{err:?}");
+            tracing::error!("{err:?}");
         }
         Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
     }

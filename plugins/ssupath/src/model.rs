@@ -155,7 +155,7 @@ impl SsuPathProgram {
                 .cloned()
                 .ok_and_parse_u32("Cannot parse miles of entry".to_string())
                 .inspect_err(|e| {
-                    log::warn!("Failed to parse miles of entry: {e:?}");
+                    tracing::warn!("Failed to parse miles of entry: {e:?}");
                 })
                 .unwrap_or(0);
             let applier = desc_info_map

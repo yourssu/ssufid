@@ -1,7 +1,6 @@
 use std::sync::{Arc, LazyLock};
 
 use futures::{TryStreamExt, stream::FuturesUnordered};
-use log::info;
 use model::{
     SsuPathProgram, SsuPathProgramKind, construct_content,
     table::{SsuPathCourseTable, SsuPathDivisionTable, SsuPathProgramTable},
@@ -115,7 +114,7 @@ impl SsuPathPlugin {
             &format!("sToken={token}; Domain=.ssu.ac.kr; Path=/; secure"),
             &"https://path.ssu.ac.kr".parse::<Url>().unwrap(),
         );
-        info!("{api_return_url}?sToken={token}&sIdno={id}");
+        tracing::info!("{api_return_url}?sToken={token}&sIdno={id}");
         let res = client
             .get(format!("{api_return_url}?sToken={token}&sIdno={id}"))
             .header("Referer", "https://smartid.ssu.ac.kr/")
@@ -141,13 +140,13 @@ impl SsufidPlugin for SsuPathPlugin {
         "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        info!(
+        tracing::info!(
             "Crawling {} with {} posts limit",
             SsuPathPlugin::IDENTIFIER,
             posts_limit
         );
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);
-        info!("Crawling {pages} pages");
+        tracing::info!("Crawling {pages} pages");
         let client = self.client().await?;
         let entries = (1..=pages)
             .map(|page| entries(&client, page))
@@ -177,7 +176,7 @@ async fn entries(
     page: usize,
 ) -> Result<Vec<SsuPathProgram>, SsuPathPluginError> {
     let url = format!("{PATH_LIST_URL}{page}");
-    info!("Crawling entries from {url}");
+    tracing::info!("Crawling entries from {url}");
     let response = client.get(url).send().await?.text().await?;
     let document = Html::parse_document(&response);
     document
@@ -193,7 +192,7 @@ async fn post(
     client: &reqwest::Client,
     program: &SsuPathProgram,
 ) -> Result<SsufidPost, SsuPathPluginError> {
-    info!("Crawling program {}", program.id);
+    tracing::info!("Crawling program {}", program.id);
     let url = format!("{PATH_ENTRY_URL}{}", program.id);
     let response = client.get(&url).send().await?.text().await?;
     let document = Html::parse_document(&response);

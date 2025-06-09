@@ -4,7 +4,6 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use log::{error, info};
 use serde::{Deserialize, Serialize};
 use time;
 use tokio::sync::RwLock;
@@ -108,12 +107,12 @@ impl SsufidCore {
             let result = self
                 .run(plugin, posts_limit)
                 .await
-                .inspect_err(|e| error!("{e:?} [Attempt {attempt}/{retry_count}]"));
+                .inspect_err(|e| tracing::error!("{e:?} [Attempt {attempt}/{retry_count}]"));
 
             if let Ok(data) = &result {
                 let elapsed = start.elapsed();
 
-                info!(
+                tracing::info!(
                     "[{}] Successfully crawled {} posts in {:.2}s",
                     T::IDENTIFIER,
                     data.items.len(),
