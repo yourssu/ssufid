@@ -13,6 +13,7 @@ const _result = await esbuild.build({
   bundle: true,
   external: ["canvas"],
   format: "esm",
+  minify: true,
 });
 
 esbuild.stop();

@@ -14,6 +14,7 @@ import { HeadingNode, QuoteNode } from "npm:@lexical/rich-text";
 import { TableCellNode, TableNode, TableRowNode } from "npm:@lexical/table";
 import { ImageNode } from "./nodes/ImageNode.tsx";
 import { InlineImageNode } from "./nodes/InlineImageNode.tsx";
+import { HorizontalRuleNode } from "./nodes/HorizontalRuleNode.tsx";
 import { createHeadlessEditor } from "npm:@lexical/headless";
 
 export const toHtml = async (stateStr: string) => {
@@ -30,6 +31,7 @@ export const toHtml = async (stateStr: string) => {
       LinkNode,
       ImageNode,
       InlineImageNode,
+      HorizontalRuleNode,
     ],
   });
   const state = editor.parseEditorState(stateStr);
