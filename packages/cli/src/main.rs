@@ -13,6 +13,7 @@ use ssufid_itsites::{
     sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
 };
 use ssufid_media::MediaPlugin;
+use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
@@ -93,6 +94,7 @@ pub enum SsufidPluginRegistry {
     CseGraduate(CseGraduatePlugin),
     CseEmployment(CseEmploymentPlugin),
     Media(MediaPlugin),
+    Mediamba(MediambaPlugin),
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
@@ -123,6 +125,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::Media(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Mediamba(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SwBachelor(plugin) => {
@@ -180,6 +185,10 @@ fn construct_tasks(
         (
             MediaPlugin::IDENTIFIER,
             SsufidPluginRegistry::Media(MediaPlugin),
+        ),
+        (
+            MediambaPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Mediamba(MediambaPlugin),
         ),
         (
             SwBachelorPlugin::IDENTIFIER,

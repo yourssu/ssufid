@@ -39,7 +39,7 @@ pub struct MediaPlugin;
 
 impl SsufidPlugin for MediaPlugin {
     const IDENTIFIER: &'static str = "media.ssu.ac.kr";
-    const TITLE: &'static str = "숭실대학교 글로벌벌미디어학부";
+    const TITLE: &'static str = "숭실대학교 글로벌미디어학부";
     const DESCRIPTION: &'static str =
         "숭실대학교 글로벌미디어학부 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://media.ssu.ac.kr/sub.php?code=XxH00AXY&category=1";

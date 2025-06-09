@@ -16,6 +16,7 @@ reqwest = { workspace = true, features = [
   "cookies",
   "gzip",
   "brotli",
+  "json",
 ] }
 scraper = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
