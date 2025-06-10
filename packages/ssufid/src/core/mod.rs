@@ -127,6 +127,7 @@ impl SsufidCore {
 
     #[tracing::instrument(
         name = "run_plugin",
+        target = "content_update",
         skip(self, plugin),
         fields(plugin = T::IDENTIFIER, posts_limit)
     )]
@@ -135,7 +136,23 @@ impl SsufidCore {
         plugin: &T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let new_entries = plugin.crawl(posts_limit).await?;
+        let new_entries = plugin.crawl(posts_limit).await.inspect_err(|e| {
+            tracing::error!(
+                target: "content_update",
+                type = "crawl_failed",
+                id = T::IDENTIFIER,
+                title = T::TITLE,
+                posts_limit,
+                error = ?e,
+            )
+        })?;
+        tracing::info!(
+            target: "content_update",
+            type = "crawl_success",
+            id = T::IDENTIFIER,
+            title = T::TITLE,
+            posts_limit
+        );
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -213,7 +230,7 @@ fn merge_entries(
         let Some(old) = old_entries_map.get(&post.id) else {
             tracing::info!(
                 target: "content_update",
-                r#type = "post_created",
+                type = "post_created",
                 id = %post.id,
                 title = %post.title,
                 url = %post.url,
@@ -227,7 +244,7 @@ fn merge_entries(
         }
         tracing::info!(
             target: "content_update",
-            r#type = "post_updated",
+            type = "post_updated",
             id = %post.id,
             title = %post.title,
             url = %post.url,
