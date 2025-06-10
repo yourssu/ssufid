@@ -140,11 +140,7 @@ impl SsufidPlugin for SsuPathPlugin {
         "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        tracing::info!(
-            "Crawling {} with {} posts limit",
-            SsuPathPlugin::IDENTIFIER,
-            posts_limit
-        );
+        tracing::info!("Crawling with {} posts limit", posts_limit);
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);
         tracing::info!("Crawling {pages} pages");
         let client = self.client().await?;

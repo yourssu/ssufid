@@ -93,11 +93,7 @@ where
 
     pub(crate) async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let metadata_list = self.fetch_metadata_list(posts_limit).await?;
-        tracing::info!(
-            "[{}] fetch {} post contents",
-            T::IDENTIFIER,
-            metadata_list.len()
-        );
+        tracing::info!("fetch {} post contents", metadata_list.len());
         metadata_list
             .iter()
             .map(|metadata| self.fetch_post(metadata))
@@ -113,7 +109,7 @@ where
         let mut metadata_list: Vec<ItMetadata> = vec![];
 
         while remain > 0 {
-            tracing::info!("[{}] page: {}", T::IDENTIFIER, page);
+            tracing::info!(page);
             let mut metadata = self
                 .fetch_metadata(page)
                 .await?
@@ -202,9 +198,7 @@ where
             .filter_map(|result: Result<ItMetadata, ItMetadataError>| {
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
-                result
-                    .inspect_err(|e| tracing::warn!("[{}] {:?}", T::IDENTIFIER, e))
-                    .ok()
+                result.inspect_err(|e| tracing::warn!("{:?}", e)).ok()
             })
             .collect::<Vec<ItMetadata>>();
 
