@@ -291,9 +291,18 @@ fn setup_tracing() -> eyre::Result<()> {
         .with_filter(filter::filter_fn(|metadata| {
             metadata.target() == "content_update"
         }));
+
+    let error_report_file = File::create("error_report.json")
+        .map_err(|e| eyre::eyre!("Failed to create error log file: {e}"))?;
+    let error_report_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_writer(Arc::new(error_report_file))
+        .with_filter(LevelFilter::ERROR);
+
     tracing_subscriber::registry()
         .with(stdout_log)
         .with(content_report_layer)
+        .with(error_report_layer)
         .init();
     Ok(())
 }
