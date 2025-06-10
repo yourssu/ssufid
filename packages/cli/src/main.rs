@@ -286,6 +286,7 @@ fn setup_tracing() -> eyre::Result<()> {
         .map_err(|e| eyre::eyre!("Failed to create log file: {e}"))?;
     let content_report_layer = tracing_subscriber::fmt::layer()
         .json()
+        .with_span_list(false)
         .with_writer(Arc::new(content_report_file))
         .with_filter(filter::filter_fn(|metadata| {
             metadata.target() == "content_update"
