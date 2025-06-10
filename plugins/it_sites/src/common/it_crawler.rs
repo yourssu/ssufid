@@ -198,7 +198,9 @@ where
             .filter_map(|result: Result<ItMetadata, ItMetadataError>| {
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
-                result.inspect_err(|e| tracing::warn!("{:?}", e)).ok()
+                result
+                    .inspect_err(|e| tracing::warn!(error = ?e, "Failed to parse Metadata"))
+                    .ok()
             })
             .collect::<Vec<ItMetadata>>();
 

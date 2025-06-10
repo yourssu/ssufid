@@ -135,7 +135,7 @@ impl SsuCatchPlugin {
             })
             .filter_map(|result| {
                 result
-                    .inspect_err(|e| tracing::warn!("{:?}", e.to_string()))
+                    .inspect_err(|e| tracing::warn!(error = ?e, "Failed to parse metadata"))
                     .ok()
             })
             .collect();
