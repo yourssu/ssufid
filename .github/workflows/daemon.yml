@@ -64,6 +64,18 @@ jobs:
           path: |
             ssufid/*_report.json
 
+      - name: Analyze content report
+        if: always()
+        uses: ./ssufid/.github/actions/analyze-report
+        with:
+          path: ./ssufid/content_report.json
+        id: content_report
+
+      - name: Output content report analysis to summary
+        if: always()
+        run: |
+          echo "${{ steps.content_report.outputs.markdown }}" >> $GITHUB_STEP_SUMMARY
+
       - name: Report error
         if: failure()
         run: |
