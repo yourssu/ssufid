@@ -18,10 +18,10 @@ time = { workspace = true, features = [
   "parsing",
 ] }
 futures = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
+tokio = { workspace = true, features = ["full", "rt-multi-thread"] }
 clap = { version = "4.5.36", features = ["derive"] }
-log = { workspace = true }
-env_logger = "0.11.8"
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 
 ssufid = { workspace = true }
 ssufid_itsites = { workspace = true }

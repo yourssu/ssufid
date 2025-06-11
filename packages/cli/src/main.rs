@@ -1,9 +1,7 @@
-use std::{collections::HashSet, io::BufWriter, ops::Not, path::Path, sync::Arc};
+use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
 use clap::Parser;
-use env_logger::{Builder, Env};
 use futures::future::join_all;
-use log::error;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_itsites::{
     cse::{
@@ -17,6 +15,8 @@ use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -52,7 +52,7 @@ struct SsufidDaemonOptions {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    Builder::from_env(Env::default().filter_or("RUST_LOG", "info")).init();
+    setup_tracing()?;
 
     color_eyre::install()?;
     let options = SsufidDaemonOptions::parse();
@@ -81,7 +81,7 @@ async fn main() -> eyre::Result<()> {
         Ok(())
     } else {
         for err in &errors {
-            error!("{err:?}");
+            tracing::error!("{err:?}");
         }
         Err(eyre::eyre!("{} of {} Run failed", errors.len(), tasks_len))
     }
@@ -269,5 +269,40 @@ async fn save_run<T: SsufidPlugin>(
 
     let mut rss_file = tokio::fs::File::create(out_dir.join("rss.xml")).await?;
     rss_file.write_all(rss.as_bytes()).await?;
+    Ok(())
+}
+
+fn setup_tracing() -> eyre::Result<()> {
+    let stdout_log = tracing_subscriber::fmt::layer()
+        .with_ansi(true)
+        .with_level(true)
+        .with_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        );
+
+    let content_report_file = File::create("content_report.json")
+        .map_err(|e| eyre::eyre!("Failed to create log file: {e}"))?;
+    let content_report_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_span_list(false)
+        .with_writer(Arc::new(content_report_file))
+        .with_filter(filter::filter_fn(|metadata| {
+            metadata.target() == "content_update"
+        }));
+
+    let error_report_file = File::create("error_report.json")
+        .map_err(|e| eyre::eyre!("Failed to create error log file: {e}"))?;
+    let error_report_layer = tracing_subscriber::fmt::layer()
+        .json()
+        .with_writer(Arc::new(error_report_file))
+        .with_filter(LevelFilter::ERROR);
+
+    tracing_subscriber::registry()
+        .with(stdout_log)
+        .with(content_report_layer)
+        .with(error_report_layer)
+        .init();
     Ok(())
 }

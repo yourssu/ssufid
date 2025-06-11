@@ -4,7 +4,6 @@ use std::{
 };
 
 use indexmap::IndexMap;
-use log::{error, info};
 use serde::{Deserialize, Serialize};
 use time;
 use tokio::sync::RwLock;
@@ -105,17 +104,33 @@ impl SsufidCore {
         for attempt in 1..=retry_count {
             let start = Instant::now();
 
-            let result = self
-                .run(plugin, posts_limit)
-                .await
-                .inspect_err(|e| error!("{e:?} [Attempt {attempt}/{retry_count}]"));
+            let result = self.run(plugin, posts_limit).await.inspect_err(|e| {
+                tracing::error!(
+                    type = "run_failed",
+                    id = T::IDENTIFIER,
+                    title = T::TITLE,
+                    posts_limit,
+                    error = ?e,
+                    retry_count,
+                    attempt,
+                    "Crawl failed with error {e:?} (attempt {}/{})",
+                    attempt, retry_count
+                )
+            });
 
             if let Ok(data) = &result {
                 let elapsed = start.elapsed();
 
-                info!(
-                    "[{}] Successfully crawled {} posts in {:.2}s",
-                    T::IDENTIFIER,
+                tracing::info!(
+                    type = "run_success",
+                    id = T::IDENTIFIER,
+                    title = T::TITLE,
+                    posts_limit,
+                    posts = data.items.len(),
+                    retry_count,
+                    attempt,
+                    elapsed = ?elapsed,
+                    "Successfully crawled {} posts in {:.2}s",
                     data.items.len(),
                     elapsed.as_secs_f32()
                 );
@@ -126,12 +141,35 @@ impl SsufidCore {
         Err(Error::AttemptsExceeded(T::IDENTIFIER))
     }
 
+    #[tracing::instrument(
+        name = "run_plugin",
+        target = "content_update",
+        skip(self, plugin),
+        fields(plugin = T::IDENTIFIER, posts_limit)
+    )]
     pub async fn run<T: SsufidPlugin>(
         &self,
         plugin: &T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let new_entries = plugin.crawl(posts_limit).await?;
+        let new_entries = plugin.crawl(posts_limit).await.inspect_err(|e| {
+            tracing::error!(
+                target: "content_update",
+                type = "crawl_failed",
+                id = T::IDENTIFIER,
+                title = T::TITLE,
+                posts_limit,
+                error = ?e,
+                "Crawled failed"
+            )
+        })?;
+        tracing::info!(
+            target: "content_update",
+            type = "crawl_success",
+            id = T::IDENTIFIER,
+            title = T::TITLE,
+            posts_limit
+        );
         let cache = Arc::clone(&self.cache);
         let updated_entries = {
             // read lock scope
@@ -205,25 +243,43 @@ fn merge_entries(
     new_entries.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let new_entries = new_entries;
     for post in new_entries.into_iter() {
-        if post.updated_at.is_some() {
+        // 새로운 포스트인 경우 추가
+        let Some(old) = old_entries_map.get(&post.id) else {
+            tracing::info!(
+                target: "content_update",
+                type = "post_created",
+                id = %post.id,
+                title = %post.title,
+                url = %post.url,
+            );
             old_entries_map.insert(post.id.clone(), post);
             continue;
+        };
+        // 기존 포스트와 내용이 같은 경우 업데이트하지 않음
+        if old.contents_eq(&post) {
+            continue;
         }
-
-        if let Some(old) = old_entries_map.get(&post.id) {
-            if !old.contents_eq(&post) {
-                old_entries_map.insert(
-                    post.id.clone(),
-                    SsufidPost {
-                        created_at: old.created_at,
-                        updated_at: Some(current_time),
-                        ..post
-                    },
-                );
-            }
-            continue; // 내용이 같으면 업데이트하지 않음
+        tracing::info!(
+            target: "content_update",
+            type = "post_updated",
+            id = %post.id,
+            title = %post.title,
+            url = %post.url,
+        );
+        // `updated_at`가 이미 설정되어 있는 경우 그대로 유지
+        if post.updated_at.is_some() {
+            old_entries_map.insert(post.id.clone(), post);
+        // `updated_at`가 설정되어 있지 않은 경우 현재 시간으로 업데이트
+        } else {
+            old_entries_map.insert(
+                post.id.clone(),
+                SsufidPost {
+                    created_at: old.created_at,
+                    updated_at: Some(current_time),
+                    ..post
+                },
+            );
         }
-        old_entries_map.insert(post.id.clone(), post);
     }
     old_entries_map.into_values().collect()
 }
