@@ -42,7 +42,7 @@ runs:
         jq -s 'map(select(.fields.type == "post_created")) | [group_by(.span.plugin)[] | {(.[0].span.plugin): {"count": . | length, "content": . | map({"id": .fields.id, "title": .fields.title, "url": .fields.url})}}] | add // {}' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "post_updated<<EOF" >> $GITHUB_OUTPUT
-        jq -s 'map(select(.fields.type == "post_created")) | [group_by(.span.plugin)[] | {(.[0].span.plugin): {"count": . | length, "content": . | map({"id": .fields.id, "title": .fields.title, "url": .fields.url})}}] | add // {}' "${{ inputs.path }}" >> $GITHUB_OUTPUT
+        jq -s 'map(select(.fields.type == "post_updated")) | [group_by(.span.plugin)[] | {(.[0].span.plugin): {"count": . | length, "content": . | map({"id": .fields.id, "title": .fields.title, "url": .fields.url})}}] | add // {}' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
       shell: bash
       id: plugin_updates
