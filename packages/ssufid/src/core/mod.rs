@@ -106,7 +106,8 @@ impl SsufidCore {
 
             let result = self.run(plugin, posts_limit).await.inspect_err(|e| {
                 tracing::error!(
-                    type = "run_failed",
+                    target: "content_update",
+                    type = "crawl_failed",
                     id = T::IDENTIFIER,
                     title = T::TITLE,
                     posts_limit,
@@ -122,7 +123,8 @@ impl SsufidCore {
                 let elapsed = start.elapsed();
 
                 tracing::info!(
-                    type = "run_success",
+                    target: "content_update",
+                    type = "crawl_success",
                     id = T::IDENTIFIER,
                     title = T::TITLE,
                     posts_limit,
@@ -154,18 +156,16 @@ impl SsufidCore {
     ) -> Result<SsufidSiteData, Error> {
         let new_entries = plugin.crawl(posts_limit).await.inspect_err(|e| {
             tracing::error!(
-                target: "content_update",
-                type = "crawl_failed",
+                type = "crawl_attempt_failed",
                 id = T::IDENTIFIER,
                 title = T::TITLE,
                 posts_limit,
                 error = ?e,
-                "Crawled failed"
+                "Crawl attempt failed"
             )
         })?;
         tracing::info!(
-            target: "content_update",
-            type = "crawl_success",
+            type = "crawl_attempt_success",
             id = T::IDENTIFIER,
             title = T::TITLE,
             posts_limit
