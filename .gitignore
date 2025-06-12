@@ -20,3 +20,4 @@ target/
 # ssufid
 .cache/
 out/
+reports/

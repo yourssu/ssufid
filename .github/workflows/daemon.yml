@@ -62,13 +62,13 @@ jobs:
         with:
           name: ssufid-reports
           path: |
-            ssufid/*_report.json
+            ssufid/reports
 
       - name: Analyze content report
         if: always()
         uses: ./ssufid/.github/actions/analyze-report
         with:
-          path: ./ssufid/content_report.json
+          path: ./ssufid/reports/content_report.json
         id: content_report
 
       - name: Output content report analysis to summary
