@@ -33,10 +33,10 @@ runs:
     - name: Group content updates by plugins
       run: |
         echo "crawl_success<<EOF" >> $GITHUB_OUTPUT
-        jq -s -c 'map(select(.fields.type == "crawl_success")) |  map({"key": .fields.id, "value": .fields.title })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
+        jq -s -c 'map(select(.fields.type == "crawl_success")) |  map({"key": .fields.id, "value": .fields.title, "url": .fields.url })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "crawl_failed<<EOF" >> $GITHUB_OUTPUT
-        jq -s -c 'map(select(.fields.type == "crawl_failed")) |  map({"key": .fields.id, "value": .fields.title })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
+        jq -s -c 'map(select(.fields.type == "crawl_failed")) |  map({"key": .fields.id, "value": .fields.title, "url": .fields.url })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "post_created<<EOF" >> $GITHUB_OUTPUT
         jq -s -c 'map(select(.fields.type == "post_created")) | [group_by(.span.plugin)[] | {(.[0].span.plugin): {"count": . | length, "content": . | map({"id": .fields.id, "title": .fields.title, "url": .fields.url})}}] | add // {}' "${{ inputs.path }}" >> $GITHUB_OUTPUT
