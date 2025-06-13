@@ -100,7 +100,7 @@ runs:
         CRAWL_FAILED: ${{ steps.plugin_updates.outputs.crawl_failed }}
         FAILED_EXP: |
           map(.key) |
-          {
+          [{
               "type": "header",
               "text": {
                   "type": "plain_text",
@@ -126,7 +126,7 @@ runs:
                       "text": "<https://github.com/yourssu/ssufid|`ssufid@${{ inputs.ref }}`> / ${{ steps.event_count.outputs.crawl_success || 0 }} 성공, *${{ steps.event_count.outputs.crawl_failed || 0 }} 실패* <${{ inputs.run_url }}|상세 정보 보기>"
                   }
               ]
-          }
+          }]
         CREATED_EXP: |
           ($success | from_entries) as $success_m | ($failed | from_entries) as $failed_m | $created | to_entries |
           map({
