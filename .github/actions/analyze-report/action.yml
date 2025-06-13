@@ -5,6 +5,14 @@ inputs:
     description: "Path to the content report file."
     required: true
     default: "./reports/content_report.json"
+  ref:
+    description: "Git reference for the report, e.g., branch or commit SHA."
+    required: false
+    default: ${{ github.ref }}
+  run_url:
+    description: "URL of the GitHub Actions run for the report."
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 outputs:
   crawl_success:
     description: "Count of succeeded plugin crawls."
@@ -21,6 +29,9 @@ outputs:
   markdown:
     description: "Markdown report of content updates."
     value: ${{ steps.markdown_report.outputs.result }}
+  slack:
+    description: "Slack block message for content updates."
+    value: ${{ steps.slack_block_message.outputs.result }}
 
 runs:
   using: "composite"
@@ -33,10 +44,10 @@ runs:
     - name: Group content updates by plugins
       run: |
         echo "crawl_success<<EOF" >> $GITHUB_OUTPUT
-        jq -s -c 'map(select(.fields.type == "crawl_success")) |  map({"key": .fields.id, "value": .fields.title, "url": .fields.url })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
+        jq -s -c 'map(select(.fields.type == "crawl_success")) |  map({"key": .fields.id, "value": { "title": .fields.title, "url": .fields.url }})' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "crawl_failed<<EOF" >> $GITHUB_OUTPUT
-        jq -s -c 'map(select(.fields.type == "crawl_failed")) |  map({"key": .fields.id, "value": .fields.title, "url": .fields.url })' "${{ inputs.path }}" >> $GITHUB_OUTPUT
+        jq -s -c 'map(select(.fields.type == "crawl_failed")) |  map({"key": .fields.id, "value": { "title": .fields.title, "url": .fields.url }})' "${{ inputs.path }}" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         echo "post_created<<EOF" >> $GITHUB_OUTPUT
         jq -s -c 'map(select(.fields.type == "post_created")) | [group_by(.span.plugin)[] | {(.[0].span.plugin): {"count": . | length, "content": . | map({"id": .fields.id, "title": .fields.title, "url": .fields.url})}}] | add // {}' "${{ inputs.path }}" >> $GITHUB_OUTPUT
@@ -77,3 +88,104 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
       shell: bash
       id: markdown_report
+    - name: Generate Slack block message
+      env:
+        POST_CREATED_COUNT: ${{ steps.event_count.outputs.post_created || 0 }}
+        POST_UPDATED_COUNT: ${{ steps.event_count.outputs.post_updated || 0 }}
+        CRAWL_SUCCESS_COUNT: ${{ steps.event_count.outputs.crawl_success || 0 }}
+        CRAWL_FAILED_COUNT: ${{ steps.event_count.outputs.crawl_failed || 0 }}
+        POST_CREATED: ${{ steps.plugin_updates.outputs.post_created }}
+        POST_UPDATED: ${{ steps.plugin_updates.outputs.post_updated }}
+        CRAWL_SUCCESS: ${{ steps.plugin_updates.outputs.crawl_success }}
+        CRAWL_FAILED: ${{ steps.plugin_updates.outputs.crawl_failed }}
+        FAILED_EXP: |
+          map(.key) |
+          {
+              "type": "header",
+              "text": {
+                  "type": "plain_text",
+                  "text": "ssufid 실행에 실패했슈... :deep_thinking:",
+                  "emoji": true
+              }
+          },
+          {
+              "type": "section",
+              "text": {
+                  "type": "mrkdwn",
+                  "text": "실패한 플러그인: " + (map("`" + . + "`") | join(", "))
+              }
+          },
+          {
+              "type": "divider"
+          },
+          {
+              "type": "context",
+              "elements": [
+                  {
+                      "type": "mrkdwn",
+                      "text": "<https://github.com/yourssu/ssufid|`ssufid@${{ inputs.ref }}`> / ${{ steps.event_count.outputs.crawl_success || 0 }} 성공, *${{ steps.event_count.outputs.crawl_failed || 0 }} 실패* <${{ inputs.run_url }}|상세 정보 보기>"
+                  }
+              ]
+          }
+        CREATED_EXP: |
+          ($success | from_entries) as $success_m | ($failed | from_entries) as $failed_m | $created | to_entries |
+          map({
+              "type": "section",
+              "text": {
+                  "type": "mrkdwn",
+                  "text": ("<" + $success_m[.key].url + "|*" + $success_m[.key].title + "*> (" + (.value.count | tostring) + " 게시됨)") 
+              }
+          },
+          (.value.content[:10][] | {
+              "type": "section",
+              "text": {
+                  "type": "mrkdwn",
+                  "text": .title
+              },
+              "accessory": {
+                  "type": "button",
+                  "text": {
+                      "type": "plain_text",
+                      "text": "보러가기",
+                      "emoji": true
+                  },
+                  "value": "click",
+                  "url": .url,
+                  "action_id": "button-action"
+              }
+          }),
+          {
+              "type": "divider"
+          }) | [
+              {
+                  "type": "header",
+                  "text": {
+                      "type": "plain_text",
+                      "text": "새로운 공지사항이 올라왔슈~ :ppussunghap:",
+                      "emoji": true
+                  }
+              },
+              .[],
+              {
+                  "type": "context",
+                  "elements": [
+                      {
+                          "type": "mrkdwn",
+                          "text": "<https://github.com/yourssu/ssufid|`ssufid@${{ inputs.ref }}`> / ${{ steps.event_count.outputs.crawl_success || 0 }} 성공, *${{ steps.event_count.outputs.crawl_failed || 0 }} 실패* <${{ inputs.run_url }}|상세 정보 보기>"
+                      }
+                  ]
+              }
+          ]
+      run: |
+        echo "result<<EOF" >> $GITHUB_OUTPUT
+        if [ "$POST_CREATED_COUNT" -gt 0 ]; then
+          jq -n --argjson created "$POST_CREATED" --argjson updated "$POST_UPDATED" --argjson success "$CRAWL_SUCCESS" --argjson failed "$CRAWL_FAILED" \
+          '${{ env.CREATED_EXP }}' | jq -c . >> $GITHUB_OUTPUT
+        elif [ "$CRAWL_FAILED_COUNT" -gt 0 ]; then
+          jq '${{ env.FAILED_EXP }}' "$CRAWL_FAILED" | jq -c . >> $GITHUB_OUTPUT
+        else
+          echo "[]" >> $GITHUB_OUTPUT
+        fi
+        echo "EOF" >> $GITHUB_OUTPUT
+      shell: bash
+      id: slack_block_message
