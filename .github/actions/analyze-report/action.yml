@@ -112,7 +112,7 @@ runs:
               "type": "section",
               "text": {
                   "type": "mrkdwn",
-                  "text": "실패한 플러그인: " + (map(("`" + . + "`")) | join(", "))
+                  "text": ("실패한 플러그인: " + (map("`" + . + "`") | join(", ")))
               }
           },
           {
