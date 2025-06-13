@@ -104,21 +104,7 @@ impl SsufidCore {
         for attempt in 1..=retry_count {
             let start = Instant::now();
 
-            let result = self.run(plugin, posts_limit).await.inspect_err(|e| {
-                tracing::error!(
-                    target: "content_update",
-                    type = "crawl_failed",
-                    id = T::IDENTIFIER,
-                    title = T::TITLE,
-                    url = T::BASE_URL,
-                    posts_limit,
-                    error = ?e,
-                    retry_count,
-                    attempt,
-                    "Crawl failed with error {e:?} (attempt {}/{})",
-                    attempt, retry_count
-                )
-            });
+            let result = self.run(plugin, posts_limit).await;
 
             if let Ok(data) = &result {
                 let elapsed = start.elapsed();
@@ -142,6 +128,17 @@ impl SsufidCore {
                 return result;
             }
         }
+        tracing::error!(
+            target: "content_update",
+            type = "crawl_failed",
+            id = T::IDENTIFIER,
+            title = T::TITLE,
+            url = T::BASE_URL,
+            posts_limit,
+            retry_count,
+            "All {} crawl attempts failed with error",
+            retry_count
+        );
         Err(Error::AttemptsExceeded(T::IDENTIFIER))
     }
 
