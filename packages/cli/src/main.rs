@@ -273,6 +273,13 @@ async fn save_run<T: SsufidPlugin>(
 }
 
 fn setup_tracing() -> eyre::Result<()> {
+    std::fs::create_dir_all("reports").or_else(|e| {
+        if e.kind() == std::io::ErrorKind::AlreadyExists {
+            Ok(())
+        } else {
+            Err(e)
+        }
+    })?;
     let stdout_log = tracing_subscriber::fmt::layer()
         .with_ansi(true)
         .with_level(true)
@@ -282,7 +289,7 @@ fn setup_tracing() -> eyre::Result<()> {
                 .from_env_lossy(),
         );
 
-    let content_report_file = File::create("content_report.json")
+    let content_report_file = File::create("reports/content_report.json")
         .map_err(|e| eyre::eyre!("Failed to create log file: {e}"))?;
     let content_report_layer = tracing_subscriber::fmt::layer()
         .json()
@@ -292,7 +299,7 @@ fn setup_tracing() -> eyre::Result<()> {
             metadata.target() == "content_update"
         }));
 
-    let error_report_file = File::create("error_report.json")
+    let error_report_file = File::create("reports/error_report.json")
         .map_err(|e| eyre::eyre!("Failed to create error log file: {e}"))?;
     let error_report_layer = tracing_subscriber::fmt::layer()
         .json()

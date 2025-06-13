@@ -7,6 +7,10 @@ on:
         required: true
       SSU_PASSWORD:
         required: true
+      SLACK_WORKSPACE_TOKEN:
+        required: true
+      SLACK_CHANNEL_ID:
+        required: true
 
 jobs:
   daemon:
@@ -62,13 +66,13 @@ jobs:
         with:
           name: ssufid-reports
           path: |
-            ssufid/*_report.json
+            ssufid/reports
 
       - name: Analyze content report
         if: always()
         uses: ./ssufid/.github/actions/analyze-report
         with:
-          path: ./ssufid/content_report.json
+          path: ./ssufid/reports/content_report.json
         id: content_report
 
       - name: Output content report analysis to summary
@@ -76,10 +80,10 @@ jobs:
         run: |
           echo "${{ steps.content_report.outputs.markdown }}" >> $GITHUB_STEP_SUMMARY
 
-      - name: Report error
-        if: failure()
+      - name: Report result to the Slack
+        if: failure() || ${{ steps.content_report.outputs.post_created > 0 }}
         run: |
-          curl -F $'text=ssufid 실행 중 오류가 발생했슈~\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
+          curl -F $'blocks=${{ steps.content_report.outputs.slack }}' -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
 
       - name: Archive artifacts
         if: always()
