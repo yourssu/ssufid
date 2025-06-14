@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid_biz::BizPlugin;
 use ssufid_itsites::{
     cse::{
         bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin, graduate::CseGraduatePlugin,
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    Biz(BizPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Biz(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +206,10 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            BizPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Biz(BizPlugin::default()),
         ),
     ];
 
