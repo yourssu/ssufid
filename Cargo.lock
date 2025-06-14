@@ -2044,6 +2044,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ssufid",
+ "ssufid_inso",
  "ssufid_itsites",
  "ssufid_media",
  "ssufid_mediamba",
@@ -2053,6 +2054,22 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "ssufid_inso"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
