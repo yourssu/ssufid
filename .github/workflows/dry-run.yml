@@ -1,0 +1,27 @@
+name: Crawl Dry-run
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  daemon:
+    uses: yourssu/ssufid/.github/workflows/daemon.yml@main
+    concurrency:
+      group: daemon
+      cancel-in-progress: true
+    with:
+      dry-run: true
+      ssufid-ref: ${{ github.head_ref || 'main' }}
+    secrets:
+      SSU_ID: ${{ secrets.SSU_ID }}
+      SSU_PASSWORD: ${{ secrets.SSU_PASSWORD }}
+      SLACK_WORKSPACE_TOKEN: ${{ secrets.SLACK_WORKSPACE_TOKEN }}
+      SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
+    permissions:
+      # push
+      contents: write
+      # deploy-pages
+      pages: write
+      id-token: write
