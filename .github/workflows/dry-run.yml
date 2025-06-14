@@ -1,4 +1,4 @@
-name: Crawl Dry-run
+name: Crawl dry-run
 
 on:
   workflow_dispatch:
