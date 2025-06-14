@@ -12,6 +12,7 @@ use time::{
     Date,
     macros::{format_description, offset},
 };
+use url::Url;
 
 use crate::common::wordpress::metadata::{
     DefaultWordpressMetadataResolver, WordpressMetadata, WordpressMetadataResolver,
@@ -153,6 +154,15 @@ pub(crate) trait WordpressPostResolver {
         metadata: &WordpressMetadata<T>,
         document: scraper::Html,
     ) -> Result<SsufidPost, PluginError> {
+        let id = Url::parse(&metadata.url)
+            .map_err(|e| PluginError::parse::<T>(format!("Failed to parse URL: {e:?}")))?
+            .query_pairs()
+            .find(|(k, _)| k == "slug")
+            .ok_or_else(|| {
+                PluginError::parse::<T>("Failed to find 'slug' query parameter in the URL".into())
+            })?
+            .1
+            .to_string();
         let title = document
             .select(&TITLE_SELECTOR)
             .next()
@@ -177,7 +187,7 @@ pub(crate) trait WordpressPostResolver {
             .map(|el| el.inner_html())
             .ok_or_else(|| PluginError::parse::<T>("Failed to find content in the post".into()))?;
         Ok(SsufidPost {
-            id: "".to_string(),
+            id,
             title,
             url: metadata.url.clone(),
             content,
