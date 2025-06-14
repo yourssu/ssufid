@@ -90,7 +90,7 @@ where
         }
         // Make sure announcements are sorted correctly
         metadata_list.sort_by(|a, b| a.created_at.cmp(&b.created_at));
-        metadata_list.truncate(100);
+        metadata_list.truncate(posts_limit as usize);
 
         Ok(metadata_list)
     }
