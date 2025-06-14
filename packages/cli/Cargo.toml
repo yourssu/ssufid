@@ -24,7 +24,7 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 
 ssufid = { workspace = true }
-ssufid_itsites = { workspace = true }
+ssufid_common = { workspace = true }
 ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }

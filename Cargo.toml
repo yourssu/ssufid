@@ -35,7 +35,7 @@ mime_guess = "2.0.5"
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
 
-ssufid_itsites = { path = "plugins/it_sites" }
+ssufid_common = { path = "plugins/common" }
 ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
