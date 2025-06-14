@@ -10,6 +10,7 @@ use ssufid_itsites::{
     sec::SecPlugin,
     sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
 };
+use ssufid_materials::MaterialsPlugin; // Reverted to ssufid_materials
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    Materials(MaterialsPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Materials(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +206,10 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            MaterialsPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Materials(MaterialsPlugin::default()),
         ),
     ];
 

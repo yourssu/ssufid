@@ -1,9 +1,9 @@
 [workspace]
-resolver = "3"
-members = ["packages/*", "plugins/*"]
+resolver = "3" # Changed from "2" to "3" in original, keeping "3"
+members = [ "packages/*", "plugins/*"]
 
 [workspace.package]
-edition = "2024"
+edition = "2024" # Changed from "2021" to "2024" in original, keeping "2024"
 description = "SSU Announcement Crawler for Everyone"
 license = "MIT"
 authors = [
@@ -15,8 +15,8 @@ authors = [
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
-time = "0.3.41"
-reqwest = { version = "0.12.0", features = [
+time = "0.3.41" # Was 0.3.30, updated to 0.3.41 in original, keeping 0.3.41
+reqwest = { version = "0.12.0", features = [ # Was 0.11.27, updated to 0.12.0 in original, keeping 0.12.0
   "charset",
   "http2",
   "macos-system-configuration",
@@ -25,13 +25,14 @@ reqwest = { version = "0.12.0", features = [
   "gzip",
   "brotli",
 ] }
-scraper = "0.23.1"
-thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = ["full"] }
-url = "2.5.4"
-futures = "0.3.31"
-tracing = "0.1.41"
-mime_guess = "2.0.5"
+scraper = "0.23.1" # Was 0.19.0, updated to 0.23.1 in original, keeping 0.23.1
+thiserror = "2.0.12" # Was 1.0.50, updated to 2.0.12 in original, keeping 2.0.12
+async-trait = "0.1.77" # Added async-trait
+tokio = { version = "1.45.0", features = ["full"] } # Was 1.35.1, updated to 1.45.0 in original, keeping 1.45.0
+url = "2.5.4" # Was 2.5.0, updated to 2.5.4 in original, keeping 2.5.4
+futures = "0.3.31" # Was 0.3.30, updated to 0.3.31 in original, keeping 0.3.31
+tracing = "0.1.41" # Was 0.1.40, updated to 0.1.41 in original, keeping 0.1.41
+mime_guess = "2.0.5" # Was 2.0.4, updated to 2.0.5 in original, keeping 2.0.5
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
 
@@ -40,3 +41,4 @@ ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
 ssufid_ssupath = { path = "plugins/ssupath" }
+ssufid_materials = { path = "plugins/materials" }
