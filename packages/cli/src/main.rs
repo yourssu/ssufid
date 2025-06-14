@@ -2,6 +2,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 
 use clap::Parser;
 use futures::future::join_all;
+use lifelongedu::LifelongEduPlugin;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_common::sites::*;
 use ssufid_media::MediaPlugin;
@@ -108,6 +109,7 @@ register_plugins! {
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
+    LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
     Media(MediaPlugin) => MediaPlugin,
