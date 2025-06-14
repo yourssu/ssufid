@@ -65,7 +65,6 @@ impl WordpressMetadataResolver for SoarWordpressMetadataResolver {
             .next()
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date text".into()))?
             .trim();
-        dbg!(&date_text);
         let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
