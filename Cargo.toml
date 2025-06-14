@@ -32,6 +32,8 @@ url = "2.5.4"
 futures = "0.3.31"
 tracing = "0.1.41"
 mime_guess = "2.0.5"
+encoding_rs = "0.8.33"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
 
@@ -39,4 +41,5 @@ ssufid_itsites = { path = "plugins/it_sites" }
 ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
+ssufid_ssudorm = { path = "plugins/ssufid_ssudorm" }
 ssufid_ssupath = { path = "plugins/ssupath" }
