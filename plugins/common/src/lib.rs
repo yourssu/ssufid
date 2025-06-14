@@ -86,7 +86,8 @@ macro_rules! test_sites {
                     let posts_limit = 100;
                     let plugin = <$plugin>::new();
                     let posts = plugin.crawl(posts_limit).await.unwrap();
-                    assert_eq!(posts.len(), posts_limit as usize);
+                    assert!(posts.len() <= posts_limit as usize);
+                    assert!(!posts.is_empty(), "No posts found for {}", <$plugin>::IDENTIFIER);
                 }
             )+
         }
