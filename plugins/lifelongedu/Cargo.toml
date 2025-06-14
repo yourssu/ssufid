@@ -1,0 +1,21 @@
+[package]
+name = "lifelongedu"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ssufid = { path = "../../packages/ssufid" } # Corrected path
+
+async-trait = "0.1"
+futures = "0.3"
+reqwest = { version = "0.12", features = ["json", "cookies"] }
+scraper = "0.19"
+thiserror = "1.0"
+time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
+tokio = { version = "1", features = ["full"] }
+url = "2"
+tracing = "0.1"
+
+[dev-dependencies]
+dotenvy = "0.15"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }

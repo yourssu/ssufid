@@ -2,6 +2,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 
 use clap::Parser;
 use futures::future::join_all;
+use lifelongedu::SsuLifelongEduPlugin; // Renamed
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_itsites::{
     cse::{
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    SsuLifelongEdu(SsuLifelongEduPlugin), // Added
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,10 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SsuLifelongEdu(plugin) => {
+                // Added
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +207,11 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            // Added
+            SsuLifelongEduPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SsuLifelongEdu(SsuLifelongEduPlugin),
         ),
     ];
 
