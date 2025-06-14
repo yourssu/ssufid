@@ -2066,6 +2066,7 @@ dependencies = [
  "ssufid_common",
  "ssufid_ee",
  "ssufid_lifelongedu",
+ "ssufid_materials",
  "ssufid_media",
  "ssufid_mediamba",
  "ssufid_oasis",
@@ -2117,6 +2118,23 @@ dependencies = [
  "futures",
  "reqwest",
  "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
+name = "ssufid_materials"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
  "ssufid",
  "thiserror",
  "time",

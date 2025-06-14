@@ -7,6 +7,7 @@ use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
+use ssufid_materials::MaterialsPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_oasis::OasisPlugin;
@@ -116,6 +117,7 @@ register_plugins! {
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
     LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
+    Materials(MaterialsPlugin) => MaterialsPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
     Media(MediaPlugin) => MediaPlugin,
