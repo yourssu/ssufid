@@ -18,7 +18,7 @@ use ssufid::{
 };
 
 #[derive(Debug)]
-struct ItMetadata {
+struct GnuboardMetadata {
     category: Option<String>,
     id: String,
     url: String,
@@ -26,7 +26,7 @@ struct ItMetadata {
     created_at: time::OffsetDateTime,
 }
 
-struct ItSelectors {
+struct GnuboardSelectors {
     // in the notice list page
     table: Selector,
     tr: Selector,
@@ -42,10 +42,10 @@ struct ItSelectors {
     attachments: Selector,
 }
 
-impl ItSelectors {
+impl GnuboardSelectors {
     fn new() -> Self {
         Self {
-            table: Selector::parse("#bo_list > div.notice_list > table > tbody").unwrap(),
+            table: Selector::parse("#bo_list table > tbody").unwrap(),
             tr: Selector::parse("tr").unwrap(),
             url: Selector::parse("td.td_subject > div > a").unwrap(),
             author: Selector::parse("td.td_name.sv_use > span").unwrap(),
@@ -60,7 +60,7 @@ impl ItSelectors {
 }
 
 #[derive(Error, Debug)]
-enum ItMetadataError {
+enum GnuboardMetadataError {
     #[error("URL not found error")]
     UrlNotFound,
     #[error("URL parse failed for {0}")]
@@ -75,18 +75,18 @@ enum ItMetadataError {
 
 const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
-pub(crate) struct ItCrawler<T: SsufidPlugin> {
-    selectors: ItSelectors,
+pub(crate) struct GnuboardCrawler<T: SsufidPlugin> {
+    selectors: GnuboardSelectors,
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<T> ItCrawler<T>
+impl<T> GnuboardCrawler<T>
 where
     T: SsufidPlugin,
 {
     pub(crate) fn new() -> Self {
         Self {
-            selectors: ItSelectors::new(),
+            selectors: GnuboardSelectors::new(),
             _marker: std::marker::PhantomData,
         }
     }
@@ -103,10 +103,13 @@ where
     }
 
     /// 1 페이지부터 순서대로 최대 `posts_limit`개의 메타데이터를 반환합니다.
-    async fn fetch_metadata_list(&self, posts_limit: u32) -> Result<Vec<ItMetadata>, PluginError> {
+    async fn fetch_metadata_list(
+        &self,
+        posts_limit: u32,
+    ) -> Result<Vec<GnuboardMetadata>, PluginError> {
         let mut remain = posts_limit as usize;
         let mut page = 1;
-        let mut metadata_list: Vec<ItMetadata> = vec![];
+        let mut metadata_list: Vec<GnuboardMetadata> = vec![];
 
         while remain > 0 {
             tracing::info!(page);
@@ -115,7 +118,7 @@ where
                 .await?
                 .into_iter()
                 .take(remain)
-                .collect::<Vec<ItMetadata>>();
+                .collect::<Vec<GnuboardMetadata>>();
 
             if metadata.is_empty() {
                 break;
@@ -130,7 +133,7 @@ where
     }
 
     /// `page` 페이지의 메타데이터 리스트를 반환합니다.
-    async fn fetch_metadata(&self, page: u32) -> Result<Vec<ItMetadata>, PluginError> {
+    async fn fetch_metadata(&self, page: u32) -> Result<Vec<GnuboardMetadata>, PluginError> {
         let page_url = format!("{}/&page={}", T::BASE_URL, page);
 
         let html = reqwest::get(page_url)
@@ -161,15 +164,15 @@ where
                     .select(&self.selectors.url)
                     .next()
                     .and_then(|a| a.value().attr("href"))
-                    .ok_or(ItMetadataError::UrlNotFound)?
+                    .ok_or(GnuboardMetadataError::UrlNotFound)?
                     .to_string();
 
                 let id = Url::parse(&url)
-                    .map_err(|_| ItMetadataError::UrlParseError(url.clone()))?
+                    .map_err(|_| GnuboardMetadataError::UrlParseError(url.clone()))?
                     .query_pairs()
                     .find(|(key, value)| key == "wr_id" && !value.is_empty())
                     .map(|(_, value)| value.to_string())
-                    .ok_or(ItMetadataError::IdEmpty(url.clone()))?;
+                    .ok_or(GnuboardMetadataError::IdEmpty(url.clone()))?;
 
                 let author = tr
                     .select(&self.selectors.author)
@@ -181,13 +184,13 @@ where
                         .select(&self.selectors.created_at)
                         .next()
                         .map(|element| element.text().collect::<String>().trim().to_string())
-                        .ok_or(ItMetadataError::DateNotFound(id.clone()))?;
+                        .ok_or(GnuboardMetadataError::DateNotFound(id.clone()))?;
                     Date::parse(&date, DATE_FORMAT)
-                        .map_err(|_| ItMetadataError::DateParseError(date.clone()))?
+                        .map_err(|_| GnuboardMetadataError::DateParseError(date.clone()))?
                         .midnight()
                         .assume_offset(offset!(+09:00))
                 };
-                Ok(ItMetadata {
+                Ok(GnuboardMetadata {
                     category,
                     id,
                     url,
@@ -195,20 +198,20 @@ where
                     created_at,
                 })
             })
-            .filter_map(|result: Result<ItMetadata, ItMetadataError>| {
+            .filter_map(|result: Result<GnuboardMetadata, GnuboardMetadataError>| {
                 // 경고 메시지 모아서 출력
                 // 메타데이터 크롤링 실패 시 크롤링 대상에서 제외
                 result
                     .inspect_err(|e| tracing::warn!(error = ?e, "Failed to parse Metadata"))
                     .ok()
             })
-            .collect::<Vec<ItMetadata>>();
+            .collect::<Vec<GnuboardMetadata>>();
 
         Ok(posts_metadata)
     }
 
     /// `metadata`에 해당하는 게시글의 내용을 크롤링하여 반환합니다.
-    async fn fetch_post(&self, metadata: &ItMetadata) -> Result<SsufidPost, PluginError> {
+    async fn fetch_post(&self, metadata: &GnuboardMetadata) -> Result<SsufidPost, PluginError> {
         let html = reqwest::get(&metadata.url)
             .await
             .map_err(|e| PluginError::request::<T>(e.to_string()))?
@@ -274,13 +277,14 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::cse::bachelor::CseBachelorPlugin;
+
+    use crate::sites::CseBachelorPlugin;
 
     use super::*;
 
     #[tokio::test]
     async fn test_crawler_fetch_metadata() {
-        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
+        let crawler: GnuboardCrawler<CseBachelorPlugin> = GnuboardCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
         let metadata_list = crawler.fetch_metadata(1).await.unwrap();
@@ -304,7 +308,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_crawler_fetch_post() {
-        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
+        let crawler: GnuboardCrawler<CseBachelorPlugin> = GnuboardCrawler::new();
 
         // 1 페이지의 게시글 메타데이터 목록 가져오기
         let metadata_list = crawler.fetch_metadata(1).await.unwrap();
@@ -319,7 +323,7 @@ mod tests {
     #[tokio::test]
     async fn test_crawler_fetch_metadata_list() {
         let posts_limit = 100;
-        let crawler: ItCrawler<CseBachelorPlugin> = ItCrawler::new();
+        let crawler: GnuboardCrawler<CseBachelorPlugin> = GnuboardCrawler::new();
 
         let metadata_list = crawler.fetch_metadata_list(posts_limit).await.unwrap();
         assert_eq!(metadata_list.len(), posts_limit as usize);

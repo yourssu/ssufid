@@ -3,12 +3,9 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
-use ssufid_itsites::{
-    cse::{
-        bachelor::CseBachelorPlugin, employment::CseEmploymentPlugin, graduate::CseGraduatePlugin,
-    },
-    sec::SecPlugin,
-    sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
+use ssufid_common::sites::{
+    CseBachelorPlugin, CseEmploymentPlugin, CseGraduatePlugin, SecPlugin, SwBachelorPlugin,
+    SwGraduatePlugin,
 };
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
