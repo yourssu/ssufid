@@ -11,6 +11,7 @@ use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_oasis::OasisPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
+use ssufid_ssudorm::SsuDormPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use ssufid_startup::StartupPlugin;
 use tokio::io::AsyncWriteExt;
@@ -130,6 +131,7 @@ register_plugins! {
     Sls(SlsPlugin) => SlsPlugin::new(),
     Soar(SoarPlugin) => SoarPlugin::new(),
     SsuCatch(SsuCatchPlugin) => SsuCatchPlugin::new(),
+    SsuDorm(SsuDormPlugin) => SsuDormPlugin::new(),
     SsuPath(SsuPathPlugin) => SsuPathPlugin::new(SsuPathCredential::Password(
         std::env::var("SSU_ID").unwrap_or_default(),
         std::env::var("SSU_PASSWORD").unwrap_or_default()
