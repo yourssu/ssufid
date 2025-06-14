@@ -41,5 +41,5 @@ ssufid_itsites = { path = "plugins/it_sites" }
 ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
-ssufid_ssudorm = { path = "plugins/ssufid_ssudorm" }
+ssufid_ssudorm = { path = "plugins/ssudorm" }
 ssufid_ssupath = { path = "plugins/ssupath" }
