@@ -27,6 +27,7 @@ ssufid = { workspace = true }
 ssufid_itsites = { workspace = true }
 ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
+ssufid_oasis = { path = "../../plugins/ssufid_oasis" } # Added Oasis plugin
 ssufid_ssucatch = { workspace = true }
 ssufid_ssupath = { workspace = true }
 

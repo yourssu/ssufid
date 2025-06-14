@@ -106,6 +106,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-trait"
+version = "0.1.88"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e539d3fca749fcee5236ab05e93a52867dd549cc157c8cb7f99595f3cedffdb5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "atom_syndication"
 version = "0.12.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1673,6 +1684,7 @@ dependencies = [
  "cookie",
  "cookie_store",
  "encoding_rs",
+ "futures-channel",
  "futures-core",
  "futures-util",
  "h2",
@@ -2047,6 +2059,7 @@ dependencies = [
  "ssufid_itsites",
  "ssufid_media",
  "ssufid_mediamba",
+ "ssufid_oasis",
  "ssufid_ssucatch",
  "ssufid_ssupath",
  "time",
@@ -2097,6 +2110,23 @@ dependencies = [
  "scraper",
  "serde",
  "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_oasis"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "futures",
+ "mime_guess",
+ "reqwest",
+ "scraper",
  "ssufid",
  "thiserror",
  "time",
@@ -2420,6 +2450,7 @@ version = "0.1.41"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "784e0ac535deb450455cbfa28a6f0df145ea1bb7ae51b821cf5e7927fdcfbdd0"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

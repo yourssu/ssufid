@@ -1,0 +1,20 @@
+[package]
+name = "ssufid_oasis"
+version = "0.1.0"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+futures.workspace = true
+reqwest = { workspace = true, features = ["rustls-tls", "blocking"] }
+scraper.workspace = true
+ssufid = { version = "0.1.0", path = "../../packages/ssufid" }
+thiserror.workspace = true
+time = { workspace = true, features = ["macros", "formatting"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+url.workspace = true
+tracing = { version = "0.1", features = ["log"] } # Added tracing with version
+async-trait = "0.1" # Added async-trait with version
+mime_guess = "2.0" # Added mime_guess

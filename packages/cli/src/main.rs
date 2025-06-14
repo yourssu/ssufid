@@ -12,6 +12,7 @@ use ssufid_itsites::{
 };
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
+use ssufid_oasis::OasisPlugin; // Added OasisPlugin
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    Oasis(OasisPlugin), // Added OasisPlugin
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,10 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Oasis(plugin) => {
+                // Added OasisPlugin arm
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +207,11 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            // Added OasisPlugin task
+            OasisPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Oasis(OasisPlugin::default()),
         ),
     ];
 
