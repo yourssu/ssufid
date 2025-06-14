@@ -4,8 +4,8 @@ use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_common::sites::{
-    CseBachelorPlugin, CseEmploymentPlugin, CseGraduatePlugin, SecPlugin, SwBachelorPlugin,
-    SwGraduatePlugin,
+    CseBachelorPlugin, CseEmploymentPlugin, CseGraduatePlugin, DocsPlugin, SecPlugin,
+    SwBachelorPlugin, SwGraduatePlugin,
 };
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
@@ -90,6 +90,7 @@ pub enum SsufidPluginRegistry {
     CseBachelor(CseBachelorPlugin),
     CseGraduate(CseGraduatePlugin),
     CseEmployment(CseEmploymentPlugin),
+    Docs(DocsPlugin),
     Media(MediaPlugin),
     Mediamba(MediambaPlugin),
     SwBachelor(SwBachelorPlugin),
@@ -119,6 +120,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::CseEmployment(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Docs(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::Media(plugin) => {
@@ -178,6 +182,10 @@ fn construct_tasks(
         (
             CseEmploymentPlugin::IDENTIFIER,
             SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::default()),
+        ),
+        (
+            DocsPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Docs(DocsPlugin::default()),
         ),
         (
             MediaPlugin::IDENTIFIER,
