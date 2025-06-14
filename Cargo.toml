@@ -1,9 +1,9 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = ["packages/*", "plugins/*"]
 
 [workspace.package]
-edition = "2024"
+edition = "2021"
 description = "SSU Announcement Crawler for Everyone"
 license = "MIT"
 authors = [
@@ -32,6 +32,8 @@ url = "2.5.4"
 futures = "0.3.31"
 tracing = "0.1.41"
 mime_guess = "2.0.5"
+async-trait = "0.1.80" # <<< ADDED
+tracing-subscriber = { version = "0.3.19", features = ["fmt"] } # <<< ADDED FOR WORKSPACE
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
 

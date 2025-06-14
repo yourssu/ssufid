@@ -1,14 +1,14 @@
 use std::process::Command;
 
-use futures::{TryStreamExt, stream::FuturesOrdered};
+use futures::{stream::FuturesOrdered, TryStreamExt};
 use serde::Deserialize;
 use ssufid::{
-    PluginError,
     core::{SsufidPlugin, SsufidPost},
+    PluginError,
 };
 use time::{
-    OffsetDateTime, PrimitiveDateTime,
     macros::{format_description, offset},
+    OffsetDateTime, PrimitiveDateTime,
 };
 
 pub struct MediambaPlugin;

@@ -1,6 +1,7 @@
 pub mod table;
 
-use std::{collections::BTreeMap, sync::LazyLock};
+use once_cell::sync::Lazy;
+use std::collections::BTreeMap; // ADDED
 
 use scraper::{ElementRef, Selector};
 use serde::Deserialize;
@@ -10,11 +11,11 @@ use time::OffsetDateTime;
 
 use ssufid::PluginError;
 
-use crate::{SsuPathPlugin, utils::ElementRefExt as _};
+use crate::{utils::ElementRefExt as _, SsuPathPlugin};
 
 use super::{
-    SsuPathPluginError,
     utils::{OptionExt, ParseDateRange},
+    SsuPathPluginError,
 };
 
 pub struct SsuPathProgramDivision {
@@ -58,27 +59,27 @@ struct EntryParams {
     enc_sddpb_seq: String,
 }
 
-static THUMBNAIL_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".img_wrap img").unwrap());
-static TITLE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".tit[data-params]").unwrap());
-static DESC_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("p.desc").unwrap());
-static LABEL_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".label_box").unwrap());
-static MAJOR_TYPE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".major_type > li").unwrap());
-static INFOS_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".info_wrap dl").unwrap());
-static DESC_INFOS_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".etc_cont dl").unwrap());
-static COMPETENCIES_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("li.cabil dd > span").unwrap());
-static CLASSES_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".class_list > .class_cont").unwrap());
-static CLASSES_TITLE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".tit").unwrap());
-static CLASSES_DESCS_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("dl").unwrap());
+static THUMBNAIL_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".img_wrap img").unwrap()); // MODIFIED
+static TITLE_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".tit[data-params]").unwrap()); // MODIFIED
+static DESC_SELECTOR: Lazy<Selector> = Lazy::new(|| Selector::parse("p.desc").unwrap()); // MODIFIED
+static LABEL_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".label_box").unwrap()); // MODIFIED
+static MAJOR_TYPE_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".major_type > li").unwrap()); // MODIFIED
+static INFOS_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".info_wrap dl").unwrap()); // MODIFIED
+static DESC_INFOS_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".etc_cont dl").unwrap()); // MODIFIED
+static COMPETENCIES_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse("li.cabil dd > span").unwrap()); // MODIFIED
+static CLASSES_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".class_list > .class_cont").unwrap()); // MODIFIED
+static CLASSES_TITLE_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse(".tit").unwrap()); // MODIFIED
+static CLASSES_DESCS_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse("dl").unwrap()); // MODIFIED
 
 impl SsuPathProgram {
     pub fn from_element(element: scraper::ElementRef) -> Result<Self, SsuPathPluginError> {
@@ -154,8 +155,10 @@ impl SsuPathProgram {
                 .get("마일리지")
                 .cloned()
                 .ok_and_parse_u32("Cannot parse miles of entry".to_string())
-                .inspect_err(|e| {
+                .map_err(|e| {
+                    // MODIFIED
                     tracing::warn!(error = ?e, "Failed to parse miles of entry");
+                    e // MODIFIED
                 })
                 .unwrap_or(0);
             let applier = desc_info_map

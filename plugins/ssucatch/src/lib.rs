@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use futures::{StreamExt as _, stream::FuturesOrdered};
+use futures::{stream::FuturesOrdered, StreamExt as _};
 use scraper::{Html, Selector};
 use thiserror::Error;
 use url::Url;
@@ -9,7 +9,7 @@ use ssufid::{
     core::{Attachment, SsufidPlugin, SsufidPost},
     error::PluginError,
 };
-use time::{Date, format_description, macros::offset};
+use time::{format_description, macros::offset, Date};
 struct Selectors {
     notice: Selector,
     li: Selector,
@@ -115,7 +115,11 @@ impl SsuCatchPlugin {
                     .query_pairs()
                     .find_map(
                         |(key, value)| {
-                            if key == "slug" { Some(value) } else { None }
+                            if key == "slug" {
+                                Some(value)
+                            } else {
+                                None
+                            }
                         },
                     )
                     .unwrap_or(Cow::Borrowed(""))

@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use once_cell::sync::Lazy;
+use std::collections::BTreeMap; // ADDED
 
 use scraper::{ElementRef, Html, Selector};
 use serde::Serialize;
@@ -7,8 +8,8 @@ use time::OffsetDateTime;
 use ssufid::PluginError;
 
 use crate::{
+    utils::{serialize_date_range, ElementRefExt, OptionExt, ParseDateRange as _},
     SsuPathPlugin, SsuPathPluginError,
-    utils::{ElementRefExt, OptionExt, ParseDateRange as _, serialize_date_range},
 };
 pub struct SsuPathProgramTable {
     pub title: String,
@@ -16,10 +17,11 @@ pub struct SsuPathProgramTable {
     pub info: BTreeMap<String, String>,
 }
 
-static PROGRAM_TITLE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("#tilesContent > div.table_top:nth-child(2) > h4").unwrap());
+static PROGRAM_TITLE_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse("#tilesContent > div.table_top:nth-child(2) > h4").unwrap()); // MODIFIED
 
-static PROGRAM_TABLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
+static PROGRAM_TABLE_SELECTOR: Lazy<Selector> = Lazy::new(|| {
+    // MODIFIED
     Selector::parse("#tilesContent > div.table_top:nth-child(2) + .table_wrap > table > tbody")
         .unwrap()
 });
@@ -57,12 +59,14 @@ pub struct SsuPathCourseTable {
     pub weeks: Vec<(WeekName, BTreeMap<String, String>)>,
 }
 
-static COURSE_TABLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
+static COURSE_TABLE_SELECTOR: Lazy<Selector> = Lazy::new(|| {
+    // MODIFIED
     Selector::parse("#tilesContent > div.table_top:nth-child(4) + .table_wrap > table > tbody")
         .unwrap()
 });
 
-static WEEK_TABLES_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
+static WEEK_TABLES_SELECTOR: Lazy<Selector> = Lazy::new(|| {
+    // MODIFIED
     Selector::parse(
         "#tilesContent > div.table_top:nth-child(4) + .table_wrap ~ .table_wrap > table > tbody",
     )
@@ -141,8 +145,8 @@ fn parse_table(table: ElementRef) -> Result<BTreeMap<String, String>, SsuPathPlu
     Ok(BTreeMap::from_iter(entry_iter))
 }
 
-static DIVISION_TABLE_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("form[name='viewForm'] .table_wrap table").unwrap());
+static DIVISION_TABLE_SELECTOR: Lazy<Selector> = // MODIFIED
+    Lazy::new(|| Selector::parse("form[name='viewForm'] .table_wrap table").unwrap()); // MODIFIED
 
 pub struct SsuPathDivisionTable {
     pub headers: Vec<String>,

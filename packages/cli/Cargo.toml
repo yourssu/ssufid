@@ -29,6 +29,7 @@ ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
 ssufid_ssupath = { workspace = true }
+ssufid_lawyer = { path = "../../plugins/ssufid_lawyer" } # <<< ADDED
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }

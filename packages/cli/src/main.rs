@@ -1,3 +1,4 @@
+// (Original imports...)
 use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
 use clap::Parser;
@@ -10,14 +11,16 @@ use ssufid_itsites::{
     sec::SecPlugin,
     sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
 };
+use ssufid_lawyer::LawyerPlugin; // <<< ADDED
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
+use tracing_subscriber::{filter, layer::SubscriberExt as _, util::SubscriberInitExt, Layer};
 
+// (SsufidDaemonOptions struct remains the same)
 #[derive(Parser, Debug)]
 #[command(
     name = "ssufid",
@@ -98,6 +101,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    Lawyer(LawyerPlugin), // <<< ADDED
 }
 
 impl SsufidPluginRegistry {
@@ -139,15 +143,21 @@ impl SsufidPluginRegistry {
             SsufidPluginRegistry::SecBachelor(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
+            SsufidPluginRegistry::Lawyer(plugin) => {
+                // <<< ADDED
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
         }
     }
 }
 
-fn construct_tasks(
+fn construct_tasks<'o>(
+    // Introduce lifetime 'o
     core: Arc<SsufidCore>,
-    out_dir: &Path,
+    out_dir: &'o Path, // Use 'o for out_dir
     options: SsufidDaemonOptions,
-) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
+) -> Vec<impl std::future::Future<Output = eyre::Result<()>> + 'o> {
+    // Add 'o to the impl Future
     let include: Option<HashSet<String>> = options
         .include
         .is_empty()
@@ -202,8 +212,14 @@ fn construct_tasks(
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
         ),
+        (
+            // <<< ADDED BLOCK
+            LawyerPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Lawyer(LawyerPlugin::default()),
+        ),
     ];
 
+    // (Rest of construct_tasks remains the same)
     if let Some(include) = include {
         tasks
             .into_iter()
@@ -243,6 +259,7 @@ fn construct_tasks(
     }
 }
 
+// (save_run function remains the same)
 async fn save_run<T: SsufidPlugin>(
     core: Arc<SsufidCore>,
     base_out_dir: &Path,
@@ -272,6 +289,7 @@ async fn save_run<T: SsufidPlugin>(
     Ok(())
 }
 
+// (setup_tracing function remains the same)
 fn setup_tracing() -> eyre::Result<()> {
     std::fs::create_dir_all("reports").or_else(|e| {
         if e.kind() == std::io::ErrorKind::AlreadyExists {

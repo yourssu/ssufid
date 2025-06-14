@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use time;
 use tokio::sync::RwLock;
 use tokio::{io::AsyncWriteExt, time::Instant};
+// Removed async_trait import
 
 use crate::error::{Error, PluginError};
 
@@ -153,7 +154,7 @@ impl SsufidCore {
         plugin: &T,
         posts_limit: u32,
     ) -> Result<SsufidSiteData, Error> {
-        let new_entries = plugin.crawl(posts_limit).await.inspect_err(|e| {
+        let new_entries = plugin.crawl(posts_limit).await.map_err(|e| {
             tracing::error!(
                 type = "crawl_attempt_failed",
                 id = T::IDENTIFIER,
@@ -161,7 +162,8 @@ impl SsufidCore {
                 posts_limit,
                 error = ?e,
                 "Crawl attempt failed"
-            )
+            );
+            e
         })?;
         tracing::info!(
             type = "crawl_attempt_success",
@@ -283,6 +285,7 @@ fn merge_entries(
     old_entries_map.into_values().collect()
 }
 
+// MODIFIED back to original style (presumably)
 pub trait SsufidPlugin {
     const TITLE: &'static str;
     const IDENTIFIER: &'static str;
@@ -290,9 +293,10 @@ pub trait SsufidPlugin {
     const BASE_URL: &'static str;
 
     fn crawl(
-        &self,
+        // Changed signature to use -> impl Future
+        &self, // Lifetime 'a will be inferred by the compiler as '_
         posts_limit: u32,
-    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, PluginError>> + Send;
+    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, PluginError>> + Send + '_;
 }
 
 // 임시 테스트
@@ -300,11 +304,11 @@ pub trait SsufidPlugin {
 mod tests {
     use std::{time::Duration, vec};
 
-    use time::OffsetDateTime;
     use time::macros::datetime;
+    use time::OffsetDateTime;
     use tokio::io::AsyncWriteExt;
 
-    use super::{SsufidCore, SsufidPost, merge_entries};
+    use super::{merge_entries, SsufidCore, SsufidPost};
 
     #[tokio::test]
     async fn test_read_cache() {

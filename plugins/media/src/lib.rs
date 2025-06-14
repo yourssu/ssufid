@@ -1,15 +1,15 @@
 use std::sync::LazyLock;
 
-use futures::{TryStreamExt as _, stream::FuturesUnordered};
-use scraper::{ElementRef, Html, Selector, html::Select};
+use futures::{stream::FuturesUnordered, TryStreamExt as _};
+use scraper::{html::Select, ElementRef, Html, Selector};
 use time::{
-    OffsetDateTime, PrimitiveDateTime,
     macros::{format_description, offset},
+    OffsetDateTime, PrimitiveDateTime,
 };
 
 use ssufid::{
-    PluginError,
     core::{Attachment, SsufidPlugin, SsufidPost},
+    PluginError,
 };
 
 trait SelectExt {

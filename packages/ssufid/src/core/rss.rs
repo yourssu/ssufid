@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use rss::{
-    Category, ChannelBuilder, Enclosure, ItemBuilder,
     extension::{Extension, ExtensionBuilder},
+    Category, ChannelBuilder, Enclosure, ItemBuilder,
 };
 use time::format_description::well_known::{Rfc2822, Rfc3339};
 

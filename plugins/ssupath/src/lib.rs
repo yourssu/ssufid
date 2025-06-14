@@ -1,9 +1,11 @@
-use std::sync::{Arc, LazyLock};
+use once_cell::sync::Lazy;
+use std::sync::Arc; // ADDED for Lazy
 
-use futures::{TryStreamExt, stream::FuturesUnordered};
+use futures::{stream::FuturesUnordered, TryStreamExt};
 use model::{
-    SsuPathProgram, SsuPathProgramKind, construct_content,
+    construct_content,
     table::{SsuPathCourseTable, SsuPathDivisionTable, SsuPathProgramTable},
+    SsuPathProgram, SsuPathProgramKind,
 };
 use scraper::{Html, Selector};
 use sso::SsuSsoError;
@@ -11,8 +13,8 @@ use url::Url;
 use utils::default_header;
 
 use ssufid::{
-    PluginError,
     core::{SsufidPlugin, SsufidPost},
+    PluginError,
 };
 
 pub mod model;
@@ -164,8 +166,8 @@ impl SsufidPlugin for SsuPathPlugin {
 
 const PATH_LIST_URL: &str = "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do?paginationInfo.currentPageNo=";
 
-static ENTRIES_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("div.lica_wrap > ul > li").unwrap());
+static ENTRIES_SELECTOR: Lazy<Selector> = // MODIFIED LazyLock to Lazy
+    Lazy::new(|| Selector::parse("div.lica_wrap > ul > li").unwrap()); // MODIFIED LazyLock to Lazy
 
 async fn entries(
     client: &reqwest::Client,
