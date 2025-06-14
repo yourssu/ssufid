@@ -103,7 +103,7 @@ jobs:
           echo "${{ steps.content_report.outputs.markdown }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Report result to the Slack
-        if: ${{ inputs.dry-run != true }} && ${{ secrets.SLACK_WORKSPACE_TOKEN != '' }} && ${{ secrets.SLACK_CHANNEL_ID != '' }} && (failure() || ${{ steps.content_report.outputs.post_created > 0 }})
+        if: ${{ inputs.dry-run != true }} && (failure() || ${{ steps.content_report.outputs.post_created > 0 }})
         run: |
           curl -F $'blocks=${{ steps.content_report.outputs.slack }}' -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
 
