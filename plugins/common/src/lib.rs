@@ -3,8 +3,18 @@ pub mod sites;
 
 macro_rules! gnuboard_plugin {
     ($name:ident, $identifier:expr, $title:expr, $description:expr, $base_url:expr) => {
+        $crate::gnuboard_plugin!(
+            $name,
+            $identifier,
+            $title,
+            $description,
+            $base_url,
+            $crate::common::gnuboard::metadata::ItGnuboardMetadataResolver
+        );
+    };
+    ($name:ident, $identifier:expr, $title:expr, $description:expr, $base_url:expr, $resolver:ty) => {
         pub struct $name {
-            crawler: $crate::common::gnuboard::GnuboardCrawler<Self>,
+            crawler: $crate::common::gnuboard::GnuboardCrawler<Self, $resolver>,
         }
 
         impl ssufid::core::SsufidPlugin for $name {
