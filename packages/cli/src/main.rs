@@ -1,5 +1,6 @@
 use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
+use chemeng::ChemEngPlugin;
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
@@ -91,6 +92,7 @@ register_plugins! {
     Actx(ActxPlugin) => ActxPlugin::new(),
     Bioinfo(BioinfoPlugin) => BioinfoPlugin::new(),
     Chem(ChemPlugin) => ChemPlugin::new(),
+    ChemEng(ChemEngPlugin) => ChemEngPlugin::new(),
     Chilan(ChilanPlugin) => ChilanPlugin::new(),
     CseBachelor(CseBachelorPlugin) => CseBachelorPlugin::new(),
     CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),

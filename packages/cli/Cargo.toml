@@ -30,6 +30,7 @@ ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
 ssufid_ssupath = { workspace = true }
 ssufid_lifelongedu = { workspace = true }
+chemeng = { workspace = true }
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }
