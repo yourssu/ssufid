@@ -15,6 +15,10 @@ use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
 
+use crate::macros::register_plugins;
+
+mod macros;
+
 #[derive(Parser, Debug)]
 #[command(
     name = "ssufid",
@@ -84,171 +88,24 @@ async fn main() -> eyre::Result<()> {
     }
 }
 
-pub enum SsufidPluginRegistry {
-    SsuCatch(SsuCatchPlugin),
-    SsuPath(SsuPathPlugin),
-    CseBachelor(CseBachelorPlugin),
-    CseGraduate(CseGraduatePlugin),
-    CseEmployment(CseEmploymentPlugin),
-    Docs(DocsPlugin),
-    Media(MediaPlugin),
-    Mediamba(MediambaPlugin),
-    SwBachelor(SwBachelorPlugin),
-    SwGraduate(SwGraduatePlugin),
-    SecBachelor(SecPlugin),
+register_plugins! {
+    SsuCatch(SsuCatchPlugin) => SsuCatchPlugin::new(),
+    SsuPath(SsuPathPlugin) => SsuPathPlugin::new(SsuPathCredential::Password(
+        std::env::var("SSU_ID").unwrap_or_default(),
+        std::env::var("SSU_PASSWORD").unwrap_or_default()
+    )),
+    CseBachelor(CseBachelorPlugin) => CseBachelorPlugin::new(),
+    CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),
+    CseEmployment(CseEmploymentPlugin) => CseEmploymentPlugin::new(),
+    Docs(DocsPlugin) => DocsPlugin::new(),
+    Media(MediaPlugin) => MediaPlugin,
+    Mediamba(MediambaPlugin) => MediambaPlugin,
+    SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
+    SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
+    Sec(SecPlugin) => SecPlugin::new(),
 }
 
-impl SsufidPluginRegistry {
-    async fn save_run(
-        self,
-        core: Arc<SsufidCore>,
-        out_dir: &Path,
-        posts_limit: u32,
-        retry_count: u32,
-    ) -> eyre::Result<()> {
-        match self {
-            SsufidPluginRegistry::SsuCatch(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::SsuPath(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::CseBachelor(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::CseGraduate(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::CseEmployment(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::Docs(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::Media(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::Mediamba(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::SwBachelor(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::SwGraduate(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-            SsufidPluginRegistry::SecBachelor(plugin) => {
-                save_run(core, out_dir, plugin, posts_limit, retry_count).await
-            }
-        }
-    }
-}
-
-fn construct_tasks(
-    core: Arc<SsufidCore>,
-    out_dir: &Path,
-    options: SsufidDaemonOptions,
-) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
-    let include: Option<HashSet<String>> = options
-        .include
-        .is_empty()
-        .not()
-        .then_some(HashSet::from_iter(options.include));
-    let exclude: Option<HashSet<String>> = options
-        .exclude
-        .is_empty()
-        .not()
-        .then_some(HashSet::from_iter(options.exclude));
-    let tasks = [
-        (
-            SsuCatchPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SsuCatch(SsuCatchPlugin::default()),
-        ),
-        (
-            SsuPathPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SsuPath(SsuPathPlugin::new(SsuPathCredential::Password(
-                std::env::var("SSU_ID").unwrap_or_default(),
-                std::env::var("SSU_PASSWORD").unwrap_or_default(),
-            ))),
-        ),
-        (
-            CseBachelorPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseBachelor(CseBachelorPlugin::default()),
-        ),
-        (
-            CseGraduatePlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseGraduate(CseGraduatePlugin::default()),
-        ),
-        (
-            CseEmploymentPlugin::IDENTIFIER,
-            SsufidPluginRegistry::CseEmployment(CseEmploymentPlugin::default()),
-        ),
-        (
-            DocsPlugin::IDENTIFIER,
-            SsufidPluginRegistry::Docs(DocsPlugin::default()),
-        ),
-        (
-            MediaPlugin::IDENTIFIER,
-            SsufidPluginRegistry::Media(MediaPlugin),
-        ),
-        (
-            MediambaPlugin::IDENTIFIER,
-            SsufidPluginRegistry::Mediamba(MediambaPlugin),
-        ),
-        (
-            SwBachelorPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SwBachelor(SwBachelorPlugin::default()),
-        ),
-        (
-            SwGraduatePlugin::IDENTIFIER,
-            SsufidPluginRegistry::SwGraduate(SwGraduatePlugin::default()),
-        ),
-        (
-            SecPlugin::IDENTIFIER,
-            SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
-        ),
-    ];
-
-    if let Some(include) = include {
-        tasks
-            .into_iter()
-            .filter_map(|(id, task)| {
-                include.contains(id).then_some(task.save_run(
-                    core.clone(),
-                    out_dir,
-                    options.posts_limit,
-                    options.retry_count,
-                ))
-            })
-            .collect()
-    } else if let Some(exclude) = exclude {
-        tasks
-            .into_iter()
-            .filter_map(|(id, task)| {
-                exclude.contains(id).not().then_some(task.save_run(
-                    core.clone(),
-                    out_dir,
-                    options.posts_limit,
-                    options.retry_count,
-                ))
-            })
-            .collect()
-    } else {
-        tasks
-            .into_iter()
-            .map(|(_, task)| {
-                task.save_run(
-                    core.clone(),
-                    out_dir,
-                    options.posts_limit,
-                    options.retry_count,
-                )
-            })
-            .collect()
-    }
-}
-
-async fn save_run<T: SsufidPlugin>(
+pub(crate) async fn save_run<T: SsufidPlugin>(
     core: Arc<SsufidCore>,
     base_out_dir: &Path,
     plugin: T,
