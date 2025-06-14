@@ -2,15 +2,36 @@ name: Crawl & Deploy
 
 on:
   workflow_call:
+    inputs:
+      dry-run:
+        required: false
+        type: boolean
+        default: false
+      ssufid-repository:
+        required: false
+        type: string
+        default: "yourssu/ssufid"
+      ssufid-ref:
+        required: false
+        type: string
+        default: "main"
+      target-repository:
+        required: false
+        type: string
+        default: "yourssu/ssufid-sites"
+      target-ref:
+        required: false
+        type: string
+        default: "main"
     secrets:
       SSU_ID:
         required: true
       SSU_PASSWORD:
         required: true
       SLACK_WORKSPACE_TOKEN:
-        required: true
+        required: false
       SLACK_CHANNEL_ID:
-        required: true
+        required: false
 
 jobs:
   daemon:
@@ -18,7 +39,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          repository: ${{ inputs.target-repository }}
+          ref: ${{ inputs.target-ref }}
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -29,8 +51,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ssufid
-          repository: yourssu/ssufid
-          ref: main
+          repository: ${{ inputs.ssufid-repository }}
+          ref: ${{ inputs.ssufid-ref }}
 
       - name: Retrieve cargo cache
         uses: Leafwing-Studios/cargo-cache@v2
@@ -61,7 +83,7 @@ jobs:
           cd -
 
       - name: Upload reports
-        if: always()
+        if: always() && ${{ inputs.dry-run != true }}
         uses: actions/upload-artifact@v4
         with:
           name: ssufid-reports
@@ -81,18 +103,18 @@ jobs:
           echo "${{ steps.content_report.outputs.markdown }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Report result to the Slack
-        if: failure() || ${{ steps.content_report.outputs.post_created > 0 }}
+        if: ${{ inputs.dry-run != true }} && ${{ secrets.SLACK_WORKSPACE_TOKEN != null }} && ${{ secrets.SLACK_CHANNEL_ID != null }} && (failure() || ${{ steps.content_report.outputs.post_created > 0 }})
         run: |
           curl -F $'blocks=${{ steps.content_report.outputs.slack }}' -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
 
       - name: Archive artifacts
-        if: always()
+        if: ${{ inputs.dry-run != true }} && always()
         uses: actions/upload-pages-artifact@v3
         with:
           path: ssufid/out/
 
       - name: Update data and cache
-        if: always()
+        if: ${{ inputs.dry-run != true }} && always()
         run: |
           cp -rv ssufid/.cache/ .
           cp -rv ssufid/out/* .
@@ -101,7 +123,7 @@ jobs:
         if: always()
 
       - name: Push changes
-        if: always()
+        if: ${{ inputs.dry-run != true }} && always()
         run: |
           sudo timedatectl set-timezone 'Asia/Seoul'
           git config user.name "GitHub Actions"
@@ -110,5 +132,5 @@ jobs:
           (git commit -m "update: $(date +'%Y-%m-%d %H:%M')" && git push) || echo "no changes to commit"
 
       - name: Deploy to GitHub Pages
-        if: always()
+        if: ${{ inputs.dry-run != true }} && always()
         uses: actions/deploy-pages@v4
