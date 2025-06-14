@@ -2044,6 +2044,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ssufid",
+ "ssufid_infocom",
  "ssufid_itsites",
  "ssufid_media",
  "ssufid_mediamba",
