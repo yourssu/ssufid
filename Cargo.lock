@@ -2056,6 +2056,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ssufid_infocom"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "ssufid_itsites"
 version = "0.1.0"
 dependencies = [
