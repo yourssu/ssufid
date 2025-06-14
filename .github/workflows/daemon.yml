@@ -114,7 +114,7 @@ jobs:
           path: ssufid/out/
 
       - name: Update data and cache
-        if: ${{ inputs.dry-run != true }} && always()
+        if: ${{ inputs.dry-run != true }} && (success() || failure())
         run: |
           cp -rv ssufid/.cache/ .
           cp -rv ssufid/out/* .
@@ -123,7 +123,7 @@ jobs:
         if: always()
 
       - name: Push changes
-        if: ${{ inputs.dry-run != true }} && always()
+        if: ${{ inputs.dry-run != true }} && (success() || failure())
         run: |
           sudo timedatectl set-timezone 'Asia/Seoul'
           git config user.name "GitHub Actions"
@@ -132,5 +132,5 @@ jobs:
           (git commit -m "update: $(date +'%Y-%m-%d %H:%M')" && git push) || echo "no changes to commit"
 
       - name: Deploy to GitHub Pages
-        if: ${{ inputs.dry-run != true }} && always()
+        if: ${{ inputs.dry-run != true }} && (success() || failure())
         uses: actions/deploy-pages@v4
