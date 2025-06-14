@@ -51,6 +51,17 @@ pub mod chilan {
 }
 pub use chilan::ChilanPlugin;
 
+pub mod counsel {
+    crate::wordpress_plugin!(
+        CounselPlugin,
+        "counsel.ssu.ac.kr",
+        "숭실대학교 상담심리학과 공지사항",
+        "숭실대학교 상담심리학과 홈페이지의 공지사항을 제공합니다.",
+        "https://counsel.ssu.ac.kr/%ec%95%8c%eb%a6%bc%eb%a7%88%eb%8b%b9/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad"
+    );
+}
+pub use counsel::CounselPlugin;
+
 pub mod cse {
     crate::gnuboard_plugin!(
         CseBachelorPlugin,
@@ -426,39 +437,40 @@ pub use sw::SwBachelorPlugin;
 pub use sw::SwGraduatePlugin;
 
 crate::test_sites! {
-  test_crawl_accounting(AccountingPlugin),
-  test_crawl_actx(ActxPlugin),
-  test_crawl_bioinfo(BioinfoPlugin),
-  test_crawl_chem(ChemPlugin),
-  test_crawl_chilan(ChilanPlugin),
-  test_crawl_cse_bachelor(CseBachelorPlugin),
-  test_crawl_cse_employment(CseEmploymentPlugin),
-  test_crawl_cse_graduate(CseGraduatePlugin),
-  test_crawl_docs(DocsPlugin),
-  test_crawl_eco(EcoPlugin),
-  test_crawl_englan(EnglanPlugin),
-  test_crawl_ensb(EnsbPlugin),
-  test_crawl_finance(FinancePlugin),
-  test_crawl_france(FrancePlugin),
-  test_crawl_gerlan(GerlanPlugin),
-  test_crawl_gtrade(GtradePlugin),
-  test_crawl_history(HistoryPlugin),
-  test_crawl_iise(IisePlugin),
-  test_crawl_itrans(ItransPlugin),
-  test_crawl_japanstu(JapanstuPlugin),
-  test_crawl_korlan(KorlanPlugin),
-  test_crawl_law(LawPlugin),
-  test_crawl_masscom(MasscomPlugin),
-  test_crawl_math(MathPlugin),
-  test_crawl_mysoongsil(MysoongsilPlugin),
-  test_crawl_philo(PhiloPlugin),
-  test_crawl_physics(PhysicsPlugin),
-  test_crawl_politics(PoliticsPlugin),
-  test_crawl_pubad(PubadPlugin),
-  test_crawl_sec(SecPlugin),
-  test_crawl_sls(SlsPlugin),
-  test_crawl_soar(SoarPlugin),
-  test_crawl_sports(SportsPlugin),
-  test_crawl_sw_bachelor(SwBachelorPlugin),
-  test_crawl_sw_graduate(SwGraduatePlugin),
+    test_crawl_accounting(AccountingPlugin),
+    test_crawl_actx(ActxPlugin),
+    test_crawl_bioinfo(BioinfoPlugin),
+    test_crawl_chem(ChemPlugin),
+    test_crawl_chilan(ChilanPlugin),
+    test_crawl_counsel(CounselPlugin),
+    test_crawl_cse_bachelor(CseBachelorPlugin),
+    test_crawl_cse_employment(CseEmploymentPlugin),
+    test_crawl_cse_graduate(CseGraduatePlugin),
+    test_crawl_docs(DocsPlugin),
+    test_crawl_eco(EcoPlugin),
+    test_crawl_englan(EnglanPlugin),
+    test_crawl_ensb(EnsbPlugin),
+    test_crawl_finance(FinancePlugin),
+    test_crawl_france(FrancePlugin),
+    test_crawl_gerlan(GerlanPlugin),
+    test_crawl_gtrade(GtradePlugin),
+    test_crawl_history(HistoryPlugin),
+    test_crawl_iise(IisePlugin),
+    test_crawl_itrans(ItransPlugin),
+    test_crawl_japanstu(JapanstuPlugin),
+    test_crawl_korlan(KorlanPlugin),
+    test_crawl_law(LawPlugin),
+    test_crawl_masscom(MasscomPlugin),
+    test_crawl_math(MathPlugin),
+    test_crawl_mysoongsil(MysoongsilPlugin),
+    test_crawl_philo(PhiloPlugin),
+    test_crawl_physics(PhysicsPlugin),
+    test_crawl_politics(PoliticsPlugin),
+    test_crawl_pubad(PubadPlugin),
+    test_crawl_sec(SecPlugin),
+    test_crawl_sls(SlsPlugin),
+    test_crawl_soar(SoarPlugin),
+    test_crawl_sports(SportsPlugin),
+    test_crawl_sw_bachelor(SwBachelorPlugin),
+    test_crawl_sw_graduate(SwGraduatePlugin),
 }
