@@ -3,10 +3,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
-use ssufid_common::sites::{
-    CseBachelorPlugin, CseEmploymentPlugin, CseGraduatePlugin, DocsPlugin, SecPlugin,
-    SwBachelorPlugin, SwGraduatePlugin,
-};
+use ssufid_common::sites::*;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
@@ -89,20 +86,48 @@ async fn main() -> eyre::Result<()> {
 }
 
 register_plugins! {
+    Accounting(AccountingPlugin) => AccountingPlugin::new(),
+    Actx(ActxPlugin) => ActxPlugin::new(),
+    Bioinfo(BioinfoPlugin) => BioinfoPlugin::new(),
+    Chem(ChemPlugin) => ChemPlugin::new(),
+    Chilan(ChilanPlugin) => ChilanPlugin::new(),
+    CseBachelor(CseBachelorPlugin) => CseBachelorPlugin::new(),
+    CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),
+    CseEmployment(CseEmploymentPlugin) => CseEmploymentPlugin::new(),
+    Docs(DocsPlugin) => DocsPlugin::new(),
+    Eco(EcoPlugin) => EcoPlugin::new(),
+    Englan(EnglanPlugin) => EnglanPlugin::new(),
+    Ensb(EnsbPlugin) => EnsbPlugin::new(),
+    Finance(FinancePlugin) => FinancePlugin::new(),
+    France(FrancePlugin) => FrancePlugin::new(),
+    Gerlan(GerlanPlugin) => GerlanPlugin::new(),
+    Gtrade(GtradePlugin) => GtradePlugin::new(),
+    History(HistoryPlugin) => HistoryPlugin::new(),
+    Iise(IisePlugin) => IisePlugin::new(),
+    Itrans(ItransPlugin) => ItransPlugin::new(),
+    Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
+    Korlan(KorlanPlugin) => KorlanPlugin::new(),
+    Law(LawPlugin) => LawPlugin::new(),
+    Masscom(MasscomPlugin) => MasscomPlugin::new(),
+    Math(MathPlugin) => MathPlugin::new(),
+    Media(MediaPlugin) => MediaPlugin,
+    Mediamba(MediambaPlugin) => MediambaPlugin,
+    Mysoongsil(MysoongsilPlugin) => MysoongsilPlugin::new(),
+    Philo(PhiloPlugin) => PhiloPlugin::new(),
+    Physics(PhysicsPlugin) => PhysicsPlugin::new(),
+    Politics(PoliticsPlugin) => PoliticsPlugin::new(),
+    Pubad(PubadPlugin) => PubadPlugin::new(),
+    Sec(SecPlugin) => SecPlugin::new(),
+    Sls(SlsPlugin) => SlsPlugin::new(),
+    Soar(SoarPlugin) => SoarPlugin::new(),
     SsuCatch(SsuCatchPlugin) => SsuCatchPlugin::new(),
     SsuPath(SsuPathPlugin) => SsuPathPlugin::new(SsuPathCredential::Password(
         std::env::var("SSU_ID").unwrap_or_default(),
         std::env::var("SSU_PASSWORD").unwrap_or_default()
     )),
-    CseBachelor(CseBachelorPlugin) => CseBachelorPlugin::new(),
-    CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),
-    CseEmployment(CseEmploymentPlugin) => CseEmploymentPlugin::new(),
-    Docs(DocsPlugin) => DocsPlugin::new(),
-    Media(MediaPlugin) => MediaPlugin,
-    Mediamba(MediambaPlugin) => MediambaPlugin,
+    Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
-    Sec(SecPlugin) => SecPlugin::new(),
 }
 
 pub(crate) async fn save_run<T: SsufidPlugin>(
