@@ -73,5 +73,26 @@ macro_rules! wordpress_plugin {
     };
 }
 
+macro_rules! test_sites {
+    ($($test_name:ident($plugin:ty)),+ $(,)?) => {
+        #[cfg(test)]
+        mod tests {
+            use super::*;
+            use ssufid::core::SsufidPlugin;
+
+            $(
+                #[tokio::test]
+                async fn $test_name() {
+                    let posts_limit = 100;
+                    let plugin = <$plugin>::new();
+                    let posts = plugin.crawl(posts_limit).await.unwrap();
+                    assert_eq!(posts.len(), posts_limit as usize);
+                }
+            )+
+        }
+    };
+}
+
 pub(crate) use gnuboard_plugin;
+pub(crate) use test_sites;
 pub(crate) use wordpress_plugin;
