@@ -1,5 +1,6 @@
 use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
+use chemeng::ChemEngPlugin;
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    ChemEng(ChemEngPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::ChemEng(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +206,10 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            ChemEngPlugin::IDENTIFIER,
+            SsufidPluginRegistry::ChemEng(ChemEngPlugin::default()),
         ),
     ];
 
