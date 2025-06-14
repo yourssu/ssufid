@@ -301,6 +301,9 @@ pub mod math {
 }
 pub use math::MathPlugin;
 
+pub mod mgmt;
+pub use mgmt::MgmtPlugin;
+
 pub mod mysoongsil {
     use crate::common::wordpress::{
         DotDateWordpressPostResolver, metadata::DotDateWordpressMetadataResolver,
@@ -462,6 +465,7 @@ crate::test_sites! {
     test_crawl_law(LawPlugin),
     test_crawl_masscom(MasscomPlugin),
     test_crawl_math(MathPlugin),
+    test_crawl_mgmt(MgmtPlugin),
     test_crawl_mysoongsil(MysoongsilPlugin),
     test_crawl_philo(PhiloPlugin),
     test_crawl_physics(PhysicsPlugin),

@@ -23,6 +23,11 @@ static BOARD_TABLE_ITEM_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
     Selector::parse("div.baord_table tbody > tr").expect("Failed to parse board table selector")
 });
 
+static BOARD_CARD_ITEM_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
+    Selector::parse("div.card_wrap > div.card_cont > a")
+        .expect("Failed to parse board table selector")
+});
+
 static TITLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
     Selector::parse("table.t_view p.title").expect("Failed to parse title selector")
 });
@@ -42,6 +47,7 @@ pub(crate) struct WordpressCrawler<
     M: WordpressMetadataResolver = DefaultWordpressMetadataResolver,
     P: WordpressPostResolver = DefaultWordpressPostResolver,
 > {
+    card: bool,
     _marker: std::marker::PhantomData<(T, M, P)>,
 }
 
@@ -53,6 +59,14 @@ where
 {
     pub(crate) fn new() -> Self {
         Self {
+            card: false,
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    pub(crate) fn card() -> Self {
+        Self {
+            card: true,
             _marker: std::marker::PhantomData,
         }
     }
@@ -108,8 +122,14 @@ where
             })?;
         let document = scraper::Html::parse_document(&html);
 
+        let selector: &Selector = if self.card {
+            &BOARD_CARD_ITEM_SELECTOR
+        } else {
+            &BOARD_TABLE_ITEM_SELECTOR
+        };
+
         document
-            .select(&BOARD_TABLE_ITEM_SELECTOR)
+            .select(selector)
             .map(R::resolve)
             .collect::<Result<Vec<_>, _>>()
             .or_else(|e| {
