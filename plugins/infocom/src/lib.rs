@@ -333,7 +333,7 @@ mod tests {
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
             .build().unwrap();
 
-        let list_response = client.get(InfocomPlugin::ENTRY_URL).send().await.unwrap();
+        let list_response = client.get(InfocomPlugin::BASE_URL).send().await.unwrap();
         let list_html = list_response.text().await.unwrap();
         let list_doc = Html::parse_document(&list_html);
         let first_post_link_el = list_doc.select(&plugin.selectors.post_container).next();
