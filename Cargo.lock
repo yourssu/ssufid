@@ -2074,6 +2074,7 @@ dependencies = [
  "ssufid_chemeng",
  "ssufid_common",
  "ssufid_ee",
+ "ssufid_infocom",
  "ssufid_inso",
  "ssufid_lawyer",
  "ssufid_lifelongedu",
@@ -2117,6 +2118,23 @@ dependencies = [
  "futures",
  "reqwest",
  "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_infocom"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
  "ssufid",
  "thiserror",
  "time",

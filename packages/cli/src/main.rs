@@ -6,6 +6,7 @@ use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
+use ssufid_infocom::InfocomPlugin;
 use ssufid_inso::InsoPlugin;
 use ssufid_lawyer::LawyerPlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
@@ -119,6 +120,7 @@ register_plugins! {
     Iise(IisePlugin) => IisePlugin::new(),
     Inso(InsoPlugin) => InsoPlugin::new(),
     Itrans(ItransPlugin) => ItransPlugin::new(),
+    Infocom(InfocomPlugin) => InfocomPlugin::new(),
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
