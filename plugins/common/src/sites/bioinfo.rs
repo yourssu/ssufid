@@ -53,7 +53,7 @@ impl WordpressMetadataResolver for BioinfoWordpressMetadataResolver {
         let is_announcement = number_element
             .text()
             .next()
-            .map_or(false, |text| text.contains("공지"));
+            .is_some_and(|text| text.contains("공지"));
 
         let title = title_element.text().collect::<String>();
 
@@ -70,7 +70,7 @@ impl WordpressMetadataResolver for BioinfoWordpressMetadataResolver {
             .next()
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date text".into()))?
             .trim();
-        let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
+        let created_at = Date::parse(date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
             .assume_offset(offset!(+09:00));

@@ -42,13 +42,12 @@ impl WordpressMetadataResolver for SoarWordpressMetadataResolver {
             .ok_or_else(|| PluginError::parse::<T>("Failed to find title element".into()))?;
 
         let date_element = childrens
-            .skip(1)
-            .next()
+            .nth(1)
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date element".into()))?;
 
         let is_announcement = title_element
             .attr("class")
-            .map_or(false, |class| class.contains("notice_color"));
+            .is_some_and(|class| class.contains("notice_color"));
 
         let title = title_element.text().collect::<String>();
 
@@ -65,7 +64,7 @@ impl WordpressMetadataResolver for SoarWordpressMetadataResolver {
             .next()
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date text".into()))?
             .trim();
-        let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
+        let created_at = Date::parse(date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
             .assume_offset(offset!(+09:00));

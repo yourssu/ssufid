@@ -38,14 +38,13 @@ pub(crate) trait WordpressMetadataResolver {
             .ok_or_else(|| PluginError::parse::<T>("Failed to find title element".into()))?;
 
         let date_element = childrens
-            .skip(1)
-            .next()
+            .nth(1)
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date element".into()))?;
 
         let is_announcement = number_element
             .text()
             .next()
-            .map_or(false, |text| text.contains("공지"));
+            .is_some_and(|text| text.contains("공지"));
 
         let title = title_element.text().collect::<String>();
 
@@ -62,7 +61,7 @@ pub(crate) trait WordpressMetadataResolver {
             .next()
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date text".into()))?
             .trim();
-        let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
+        let created_at = Date::parse(date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
             .assume_offset(offset!(+09:00));

@@ -123,7 +123,7 @@ where
 
     async fn fetch_post(&self, metadata: &WordpressMetadata<T>) -> Result<SsufidPost, PluginError> {
         tokio::time::sleep(std::time::Duration::from_millis(300)).await; // Rate limiting
-        let post_url = format!("{}", metadata.url);
+        let post_url = metadata.url.clone();
         let html = reqwest::get(post_url)
             .await
             .map_err(|e| PluginError::request::<T>(format!("Failed to request post page: {e:?}")))?
@@ -166,7 +166,7 @@ pub(crate) trait WordpressPostResolver {
             .and_then(|el| el.text().next())
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date in the post".into()))?
             .trim();
-        let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
+        let created_at = Date::parse(date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
             .assume_offset(offset!(+09:00));
