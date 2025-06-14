@@ -7,6 +7,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+ssufid_stat = { path = "../../plugins/ssufid_stat" }
 eyre = "0.6.12"
 color-eyre = "0.6.3"
 serde = { workspace = true, features = ["derive"] }

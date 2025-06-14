@@ -14,6 +14,7 @@ use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
+use ssufid_stat::SsuStatPlugin;
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
@@ -90,6 +91,7 @@ async fn main() -> eyre::Result<()> {
 pub enum SsufidPluginRegistry {
     SsuCatch(SsuCatchPlugin),
     SsuPath(SsuPathPlugin),
+    SsuStat(SsuStatPlugin),
     CseBachelor(CseBachelorPlugin),
     CseGraduate(CseGraduatePlugin),
     CseEmployment(CseEmploymentPlugin),
@@ -113,6 +115,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SsuPath(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::SsuStat(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::CseBachelor(plugin) => {
@@ -147,7 +152,7 @@ fn construct_tasks(
     core: Arc<SsufidCore>,
     out_dir: &Path,
     options: SsufidDaemonOptions,
-) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
+) -> Vec<impl std::future::Future<Output = eyre::Result<()>> + use<'_>> {
     let include: Option<HashSet<String>> = options
         .include
         .is_empty()
@@ -201,6 +206,10 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            SsuStatPlugin::IDENTIFIER,
+            SsufidPluginRegistry::SsuStat(SsuStatPlugin::default()),
         ),
     ];
 

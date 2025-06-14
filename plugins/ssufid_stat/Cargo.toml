@@ -1,0 +1,38 @@
+[package]
+name = "ssufid_stat"
+version = "0.1.0"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+# Workspace inherited dependencies
+reqwest = { workspace = true, features = [
+  "charset", # For EUC-KR and other encodings
+  "cookies", # For session/security cookie handling
+  # "http2", # Optional, but often good to have
+  # "macos-system-configuration", # Optional, platform-specific
+  "rustls-tls", # For HTTPS
+  "blocking" # If any blocking calls are needed, though plugin trait is async
+] }
+scraper = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true } # If directly dealing with JSON metadata (not in this case)
+thiserror = { workspace = true }
+time = { workspace = true, features = [
+  "serde",
+  "macros", # For offset! and date! time! literals
+  "formatting", # For parsing and formatting dates
+  "parsing", # For parsing dates from strings
+] }
+tokio = { workspace = true, features = ["full"] } # For async runtime, macros
+url = { workspace = true } # For URL parsing (extracting idx)
+futures = { workspace = true } # For async stream processing if needed
+tracing = { workspace = true } # For logging
+ssufid = { workspace = true } # The core ssufid crate
+encoding_rs = { workspace = true } # For EUC-KR decoding
+async-trait = "0.1.77" # Added async-trait
+
+[dev-dependencies]
+# time = { workspace = true, features = ["macros"] } # Already in dependencies with macros
