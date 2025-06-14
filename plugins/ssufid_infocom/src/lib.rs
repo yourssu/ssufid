@@ -7,6 +7,8 @@ use ssufid::{
 use time::{Date, macros::offset};
 use url::Url;
 
+const INFOCOM_NOTICE_URL: &str = "http://infocom.ssu.ac.kr/kor/notice/undergraduate.php";
+
 // Selectors struct (defined earlier)
 struct Selectors {
     post_container: Selector,
@@ -129,7 +131,6 @@ impl SsufidPlugin for SsuInfocomPlugin {
     const TITLE: &'static str = "숭실대학교 컴퓨터학부 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 컴퓨터학부 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://infocom.ssu.ac.kr";
-    const ENTRY_URL: &'static str = "http://infocom.ssu.ac.kr/kor/notice/undergraduate.php";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let client = reqwest::Client::builder()
@@ -139,7 +140,7 @@ impl SsufidPlugin for SsuInfocomPlugin {
 
         let initial_posts_metadata: Vec<SsufidPost> = {
             let response = client
-                .get(Self::ENTRY_URL)
+                .get(INFOCOM_NOTICE_URL)
                 .send()
                 .await
                 .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
@@ -334,11 +335,7 @@ mod tests {
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
             .build().unwrap();
 
-        let list_response = client
-            .get(SsuInfocomPlugin::ENTRY_URL)
-            .send()
-            .await
-            .unwrap();
+        let list_response = client.get(INFOCOM_NOTICE_URL).send().await.unwrap();
         let list_html = list_response.text().await.unwrap();
         let list_doc = Html::parse_document(&list_html);
         let first_post_link_el = list_doc.select(&plugin.selectors.post_container).next();

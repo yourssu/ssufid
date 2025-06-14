@@ -288,7 +288,6 @@ pub trait SsufidPlugin {
     const IDENTIFIER: &'static str;
     const DESCRIPTION: &'static str;
     const BASE_URL: &'static str;
-    const ENTRY_URL: &'static str;
 
     fn crawl(
         &self,
