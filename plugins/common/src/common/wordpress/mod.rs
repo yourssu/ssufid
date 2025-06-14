@@ -1,18 +1,21 @@
+pub(crate) mod metadata;
+
 use std::sync::LazyLock;
 
 use futures::{TryStreamExt as _, stream::FuturesOrdered};
 use scraper::Selector;
 use ssufid::{
-    PluginError,
+    PluginError, PluginErrorKind,
     core::{SsufidPlugin, SsufidPost},
 };
 use time::{
     Date,
-    format_description::BorrowedFormatItem,
     macros::{format_description, offset},
 };
 
-const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
+use crate::common::wordpress::metadata::{
+    DefaultWordpressMetadataResolver, WordpressMetadata, WordpressMetadataResolver,
+};
 
 // Hmm
 static BOARD_TABLE_ITEM_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
@@ -32,78 +35,20 @@ static CONTENT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
     Selector::parse("table.t_view div.td_box").expect("Failed to parse content selector")
 });
 
-#[allow(dead_code)]
-struct WordpressMetadata<T: SsufidPlugin> {
-    is_announcement: bool,
-    title: String,
-    url: String,
-    created_at: time::OffsetDateTime,
-    _marker: std::marker::PhantomData<T>,
-}
-
-impl<T: SsufidPlugin> TryFrom<scraper::ElementRef<'_>> for WordpressMetadata<T> {
-    type Error = PluginError;
-
-    fn try_from(element: scraper::ElementRef<'_>) -> Result<Self, Self::Error> {
-        let mut childrens = element.child_elements();
-
-        let number_element = childrens.next().ok_or_else(|| {
-            PluginError::parse::<T>("Failed to find number element in the board item".into())
-        })?;
-
-        let title_element = childrens
-            .next()
-            .and_then(|el| el.child_elements().next())
-            .ok_or_else(|| PluginError::parse::<T>("Failed to find title element".into()))?;
-
-        let date_element = childrens
-            .skip(1)
-            .next()
-            .ok_or_else(|| PluginError::parse::<T>("Failed to find date element".into()))?;
-
-        let is_announcement = number_element
-            .text()
-            .next()
-            .map_or(false, |text| text.contains("공지"));
-
-        let title = title_element.text().collect::<String>();
-
-        let url = title_element
-            .value()
-            .attr("href")
-            .ok_or_else(|| {
-                PluginError::parse::<T>("Failed to find URL in the title element".into())
-            })?
-            .to_string();
-
-        let date_text = date_element
-            .text()
-            .next()
-            .ok_or_else(|| PluginError::parse::<T>("Failed to find date text".into()))?
-            .trim();
-        let created_at = Date::parse(&date_text, DATE_FORMAT)
-            .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
-            .midnight()
-            .assume_offset(offset!(+09:00));
-
-        Ok(Self {
-            is_announcement,
-            title,
-            url,
-            created_at,
-            _marker: std::marker::PhantomData,
-        })
-    }
-}
-
 #[repr(transparent)]
-pub(crate) struct WordpressCrawler<T: SsufidPlugin> {
-    _marker: std::marker::PhantomData<T>,
+pub(crate) struct WordpressCrawler<
+    T: SsufidPlugin,
+    M: WordpressMetadataResolver = DefaultWordpressMetadataResolver,
+    P: WordpressPostResolver = DefaultWordpressPostResolver,
+> {
+    _marker: std::marker::PhantomData<(T, M, P)>,
 }
 
-impl<T> WordpressCrawler<T>
+impl<T, R, P> WordpressCrawler<T, R, P>
 where
     T: SsufidPlugin,
+    R: WordpressMetadataResolver,
+    P: WordpressPostResolver,
 {
     pub(crate) fn new() -> Self {
         Self {
@@ -154,28 +99,60 @@ where
 
         let html = reqwest::get(page_url)
             .await
-            .map_err(|e| PluginError::request::<T>(e.to_string()))?
+            .map_err(|e| PluginError::request::<T>(format!("Failed to request list page: {e:?}")))?
             .text()
             .await
-            .map_err(|e| PluginError::parse::<T>(e.to_string()))?;
+            .map_err(|e| {
+                PluginError::parse::<T>(format!("Failed to parse list html body: {e:?}"))
+            })?;
         let document = scraper::Html::parse_document(&html);
 
         document
             .select(&BOARD_TABLE_ITEM_SELECTOR)
-            .map(|el| WordpressMetadata::<T>::try_from(el))
-            .collect()
+            .map(R::resolve)
+            .collect::<Result<Vec<_>, _>>()
+            .or_else(|e| {
+                if matches!(e.kind(), PluginErrorKind::Custom(name) if name.as_ref() == "NO_ENTRY")
+                {
+                    Ok(vec![])
+                } else {
+                    Err(e)
+                }
+            })
     }
 
     async fn fetch_post(&self, metadata: &WordpressMetadata<T>) -> Result<SsufidPost, PluginError> {
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await; // Rate limiting
         let post_url = format!("{}", metadata.url);
         let html = reqwest::get(post_url)
             .await
-            .map_err(|e| PluginError::request::<T>(e.to_string()))?
+            .map_err(|e| PluginError::request::<T>(format!("Failed to request post page: {e:?}")))?
             .text()
             .await
-            .map_err(|e| PluginError::parse::<T>(e.to_string()))?;
+            .map_err(|e| {
+                PluginError::parse::<T>(format!("Failed to parse post html body: {e:?}"))
+            })?;
         let document = scraper::Html::parse_document(&html);
+        let post = P::resolve_post::<T>(metadata, document)?;
 
+        // Here you would typically save the post to your database or process it further.
+        tracing::info!(
+            "Fetched post: {} ({}), created at: {}",
+            &post.title,
+            metadata.url,
+            &post.created_at
+        );
+
+        Ok(post)
+    }
+}
+
+pub(crate) trait WordpressPostResolver {
+    const DATE_FORMAT: &'static [time::format_description::FormatItem<'static>];
+    fn resolve_post<T: SsufidPlugin>(
+        metadata: &WordpressMetadata<T>,
+        document: scraper::Html,
+    ) -> Result<SsufidPost, PluginError> {
         let title = document
             .select(&TITLE_SELECTOR)
             .next()
@@ -189,7 +166,7 @@ where
             .and_then(|el| el.text().next())
             .ok_or_else(|| PluginError::parse::<T>("Failed to find date in the post".into()))?
             .trim();
-        let created_at = Date::parse(&date_text, DATE_FORMAT)
+        let created_at = Date::parse(&date_text, Self::DATE_FORMAT)
             .map_err(|e| PluginError::parse::<T>(format!("Failed to parse date: {e:?}")))?
             .midnight()
             .assume_offset(offset!(+09:00));
@@ -199,15 +176,6 @@ where
             .next()
             .map(|el| el.inner_html())
             .ok_or_else(|| PluginError::parse::<T>("Failed to find content in the post".into()))?;
-
-        // Here you would typically save the post to your database or process it further.
-        tracing::info!(
-            "Fetched post: {} ({}), created at: {}",
-            title,
-            metadata.url,
-            created_at
-        );
-
         Ok(SsufidPost {
             id: "".to_string(),
             title,
@@ -227,4 +195,25 @@ where
             metadata: None,
         })
     }
+}
+
+pub(crate) struct DefaultWordpressPostResolver;
+
+impl WordpressPostResolver for DefaultWordpressPostResolver {
+    const DATE_FORMAT: &'static [time::format_description::FormatItem<'static>] =
+        format_description!("[year]-[month]-[day]");
+}
+
+pub(crate) struct DotDateWordpressPostResolver;
+
+impl WordpressPostResolver for DotDateWordpressPostResolver {
+    const DATE_FORMAT: &'static [time::format_description::FormatItem<'static>] =
+        format_description!("[year].[month].[day]");
+}
+
+pub(crate) struct KorDateWordpressPostResolver;
+
+impl WordpressPostResolver for KorDateWordpressPostResolver {
+    const DATE_FORMAT: &'static [time::format_description::FormatItem<'static>] =
+        format_description!("[year]년 [month padding:none]월 [day padding:none]일");
 }

@@ -48,9 +48,37 @@ macro_rules! gnuboard_plugin {
 }
 
 macro_rules! wordpress_plugin {
-    ($name:ident, $identifier:expr, $title:expr, $description:expr, $base_url:expr) => {
+    (
+        $name:ident,
+        $identifier:expr,
+        $title:expr,
+        $description:expr,
+        $base_url:expr
+    ) => {
+        $crate::wordpress_plugin!(
+            $name,
+            $identifier,
+            $title,
+            $description,
+            $base_url,
+            $crate::common::wordpress::metadata::DefaultWordpressMetadataResolver
+        );
+    };
+    ($name:ident, $identifier:expr, $title:expr, $description:expr, $base_url:expr, $meta_resolver:ty) => {
+        $crate::wordpress_plugin!(
+            $name,
+            $identifier,
+            $title,
+            $description,
+            $base_url,
+            $meta_resolver,
+            $crate::common::wordpress::DefaultWordpressPostResolver
+        );
+    };
+    ($name:ident, $identifier:expr, $title:expr, $description:expr, $base_url:expr, $meta_resolver:ty, $post_resolver:ty) => {
         pub struct $name {
-            crawler: $crate::common::wordpress::WordpressCrawler<Self>,
+            crawler:
+                $crate::common::wordpress::WordpressCrawler<Self, $meta_resolver, $post_resolver>,
         }
 
         impl ssufid::core::SsufidPlugin for $name {
