@@ -53,3 +53,4 @@ ssufid_ssfilm = { path = "plugins/ssfilm" }
 ssufid_study = { path = "plugins/study" }
 ssufid_lawyer = { path = "plugins/lawyer" }
 ssufid_infocom = { path = "plugins/infocom" }
+ssufid_biz = { path = "plugins/biz" }

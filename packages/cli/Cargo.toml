@@ -41,6 +41,7 @@ ssufid_materials = { workspace = true }
 ssufid_ssfilm = { workspace = true }
 ssufid_study = { workspace = true }
 ssufid_lawyer = { workspace = true }
+ssufid_biz = { workspace = true }
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }
