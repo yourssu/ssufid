@@ -1,5 +1,5 @@
 [package]
-name = "chemeng"
+name = "ssufid_chemeng"
 version = "0.1.0"
 description.workspace = true
 edition.workspace = true
@@ -30,7 +30,7 @@ tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
 futures = { workspace = true }
 tracing = { workspace = true }
-ssufid = { workspace = true } # Assuming path to core
+ssufid = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

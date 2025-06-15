@@ -1,9 +1,9 @@
 use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, sync::Arc};
 
-use chemeng::ChemEngPlugin;
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
