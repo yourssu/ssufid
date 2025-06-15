@@ -32,6 +32,7 @@ ssufid_ssupath = { workspace = true }
 ssufid_lifelongedu = { workspace = true }
 ssufid_chemeng = { workspace = true }
 ssufid_ee = { workspace = true }
+ssufid_oasis = { workspace = true }
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }

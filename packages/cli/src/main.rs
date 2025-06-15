@@ -9,6 +9,7 @@ use ssufid_ee::EePlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
+use ssufid_oasis::OasisPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
@@ -119,6 +120,7 @@ register_plugins! {
     Media(MediaPlugin) => MediaPlugin,
     Mediamba(MediambaPlugin) => MediambaPlugin,
     Mysoongsil(MysoongsilPlugin) => MysoongsilPlugin::new(),
+    Oasis(OasisPlugin) => OasisPlugin,
     Philo(PhiloPlugin) => PhiloPlugin::new(),
     Physics(PhysicsPlugin) => PhysicsPlugin::new(),
     Politics(PoliticsPlugin) => PoliticsPlugin::new(),
