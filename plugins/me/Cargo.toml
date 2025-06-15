@@ -1,0 +1,22 @@
+[package]
+name = "ssufid_me"
+version = "0.1.0"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+futures = { workspace = true }
+mime_guess = { workspace = true }
+reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+scraper = { workspace = true }
+ssufid = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true, features = ["macros", "serde"] }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+url = { workspace = true }
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }

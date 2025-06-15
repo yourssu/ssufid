@@ -2125,6 +2125,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ssufid_me"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "mime_guess",
+ "reqwest",
+ "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "ssufid_media"
 version = "0.1.0"
 dependencies = [
