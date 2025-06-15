@@ -110,6 +110,9 @@ impl MePlugin {
             .get(&current_page_url)
             .send()
             .await
+            .inspect_err(|e| {
+                tracing::error!(?e, "Failed to fetch posts: {}", e);
+            })
             .map_err(|e| PluginError::request::<Self>(e.to_string()))?
             .text()
             .await
@@ -176,6 +179,9 @@ impl MePlugin {
             .get(&post_url)
             .send()
             .await
+            .inspect_err(|e| {
+                tracing::error!(?e, "Failed to fetch post details: {}", e);
+            })
             .map_err(|e| PluginError::request::<Self>(e.to_string()))?
             .text()
             .await
@@ -262,7 +268,7 @@ impl SsufidPlugin for MePlugin {
     const IDENTIFIER: &'static str = "me.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 기계공학부";
     const DESCRIPTION: &'static str = "숭실대학교 기계공학부 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "https://me.ssu.ac.kr/notice/notice01.php";
+    const BASE_URL: &'static str = "http://me.ssu.ac.kr/notice/notice01.php";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let mut temp_posts_data = Vec::new();
@@ -311,14 +317,26 @@ impl SsufidPlugin for MePlugin {
 
 #[cfg(test)]
 mod tests {
+    use tracing_subscriber::EnvFilter;
+
     use super::*;
+
+    fn setup_tracing() {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter(
+                EnvFilter::from_default_env()
+                    .add_directive("ssufid_lifelongedu=info".parse().unwrap()),
+            )
+            .try_init();
+    }
 
     #[tokio::test]
     async fn test_fetch_single_post_directly() {
+        setup_tracing();
         let plugin = MePlugin::new();
         let sample_post_idx = "3061557";
         let sample_post_url = format!(
-            "https://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
+            "http://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
             sample_post_idx
         );
         let sample_post_id = sample_post_idx.to_string();
@@ -357,6 +375,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_crawl_me_notices() {
+        setup_tracing();
         let plugin = MePlugin::new();
         let posts_limit = 3;
 
