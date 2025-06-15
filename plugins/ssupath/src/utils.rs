@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
 use reqwest::header::{
-    ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CACHE_CONTROL, CONNECTION, HeaderMap,
+    HeaderMap, ACCEPT, ACCEPT_ENCODING, ACCEPT_LANGUAGE, CACHE_CONTROL, CONNECTION,
 };
 use scraper::ElementRef;
-use serde::Serializer;
 use serde::ser::Error as _;
+use serde::Serializer;
 use time::{
-    OffsetDateTime, PrimitiveDateTime,
     format_description::well_known::Rfc3339,
     macros::{format_description, offset},
+    OffsetDateTime, PrimitiveDateTime,
 };
 
 use crate::PluginError;

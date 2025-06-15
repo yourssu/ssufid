@@ -1,9 +1,9 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = ["packages/*", "plugins/*"]
 
 [workspace.package]
-edition = "2024"
+edition = "2021"
 description = "SSU Announcement Crawler for Everyone"
 license = "MIT"
 authors = [
@@ -40,3 +40,4 @@ ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
 ssufid_ssupath = { path = "plugins/ssupath" }
+ssufid_me = { path = "plugins/me" }

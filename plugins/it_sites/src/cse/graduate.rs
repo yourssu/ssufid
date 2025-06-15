@@ -1,6 +1,6 @@
 use ssufid::{
-    PluginError,
     core::{SsufidPlugin, SsufidPost},
+    PluginError,
 };
 
 use crate::common::it_crawler::ItCrawler;

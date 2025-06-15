@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use reqwest::{Client, cookie::Jar};
+use reqwest::{cookie::Jar, Client};
 use thiserror::Error;
 
-use super::utils::{DEFAULT_USER_AGENT, default_header};
+use super::utils::{default_header, DEFAULT_USER_AGENT};
 
 const SMARTID_LOGIN_URL: &str = "https://smartid.ssu.ac.kr/Symtra_sso/smln.asp";
 const SMARTID_LOGIN_FORM_REQUEST_URL: &str = "https://smartid.ssu.ac.kr/Symtra_sso/smln_pcs.asp";

@@ -1,20 +1,20 @@
 // IT대학의 컴퓨터학부, 소프트웨어학부, 정보보호학과에
 // 해당하는 플러그인에서 사용되는 공통 모듈입니다.
 
-use futures::{TryStreamExt, stream::FuturesOrdered};
+use futures::{stream::FuturesOrdered, TryStreamExt};
 use scraper::{Html, Selector};
 use thiserror::Error;
 use time::{
-    Date,
     format_description::BorrowedFormatItem,
     macros::{format_description, offset},
+    Date,
 };
 use url::Url;
 
 use scraper::Element;
 use ssufid::{
-    PluginError,
     core::{Attachment, SsufidPlugin, SsufidPost},
+    PluginError,
 };
 
 #[derive(Debug)]
