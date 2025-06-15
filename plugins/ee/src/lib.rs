@@ -36,7 +36,7 @@ struct Selectors {
 impl Selectors {
     fn new() -> Result<Self, PluginError> {
         Ok(Selectors {
-            post_item: Selector::parse("div.board-list2 > ul > li:not(.label)")
+            post_item: Selector::parse("div.board-list2 > ul > li")
                 .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_item selector: {}", e)))?,
             post_link: Selector::parse("div.subject > a")
                 .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_link selector: {}", e)))?,
@@ -157,7 +157,7 @@ impl SsufidPlugin for EePlugin {
     const IDENTIFIER: &'static str = "ee.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 전기공학부";
     const DESCRIPTION: &'static str = "숭실대학교 전기공학부 학부소식 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://ee.ssu.ac.kr";
+    const BASE_URL: &'static str = "http://ee.ssu.ac.kr/sub/sub05_02.php";
 
     // Kept `async fn` but without #[async_trait]
     // This requires the compiler to handle `async fn` in traits implicitly,
@@ -165,10 +165,10 @@ impl SsufidPlugin for EePlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let mut results = Vec::new();
         let mut page = 1;
-        let list_base_url = format!("{}/sub/sub05_01.php", Self::BASE_URL);
 
         #[derive(Debug)]
         struct PostListItemInfo {
+            notice: bool,
             relative_url: String,
             title_on_list: String,
         }
@@ -178,19 +178,25 @@ impl SsufidPlugin for EePlugin {
                 break;
             }
 
-            let current_list_url = format!("{}?page={}", list_base_url, page);
+            let current_list_url = format!(
+                "{}?boardid=major&sk=&sw=&category=&offset={}",
+                Self::BASE_URL,
+                (page - 1) * 10
+            );
             let list_html = self.fetch_page_html(&current_list_url).await?;
 
             let (items_to_fetch, has_next_page) = {
                 let list_doc = Html::parse_document(&list_html);
                 let mut items_to_fetch_current_page = Vec::new();
                 for item_el in list_doc.select(&self.selectors.post_item) {
+                    let notice = item_el.attr("class").is_some_and(|c| c.contains("label"));
                     if let Some(link_el) = item_el.select(&self.selectors.post_link).next() {
                         if let Some(href) = link_el.value().attr("href") {
                             let title_on_list =
                                 link_el.text().collect::<String>().trim().to_string();
                             if !title_on_list.is_empty() {
                                 items_to_fetch_current_page.push(PostListItemInfo {
+                                    notice,
                                     relative_url: href.trim().to_string(),
                                     title_on_list,
                                 });
@@ -312,7 +318,10 @@ impl SsufidPlugin for EePlugin {
                     updated_at: None,
                     attachments: final_attachments,
                     description: None,
-                    category: vec![],
+                    category: item_info
+                        .notice
+                        .then_some(vec!["Notice".to_string()])
+                        .unwrap_or_default(),
                     thumbnail: None,
                     metadata: None,
                 });
@@ -395,7 +404,7 @@ mod tests {
             );
             assert!(
                 post.url.starts_with(
-                    "http://ee.ssu.ac.kr/sub/sub05_01.php?boardid=notice&mode=view&idx="
+                    "http://ee.ssu.ac.kr/sub/sub05_02.php?boardid=major&mode=view&idx="
                 ),
                 "Post URL has an unexpected format for post at index {}: {}",
                 i,
