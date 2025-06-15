@@ -30,7 +30,7 @@ ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
 ssufid_ssupath = { workspace = true }
 ssufid_lifelongedu = { workspace = true }
-ssufid_me = { path = "../../plugins/me" } # Added MePlugin
+ssufid_me = { workspace = true }
 ssufid_chemeng = { workspace = true }
 ssufid_ee = { workspace = true }
 
