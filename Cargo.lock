@@ -2045,6 +2045,7 @@ dependencies = [
  "serde_json",
  "ssufid",
  "ssufid_common",
+ "ssufid_lifelongedu",
  "ssufid_media",
  "ssufid_mediamba",
  "ssufid_ssucatch",
@@ -2069,6 +2070,22 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_lifelongedu"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
  "url",
 ]
 

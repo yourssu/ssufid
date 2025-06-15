@@ -4,6 +4,7 @@ use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_common::sites::*;
+use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
@@ -108,6 +109,7 @@ register_plugins! {
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
+    LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
     Media(MediaPlugin) => MediaPlugin,
