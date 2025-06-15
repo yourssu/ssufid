@@ -150,7 +150,6 @@ impl LifelongEduPlugin {
             .join(args.next()?.strip_prefix("./")?)
             .ok()?
             .to_string();
-        dbg!(&url);
         let name = element
             .child_elements()
             .next()?
@@ -158,7 +157,6 @@ impl LifelongEduPlugin {
             .collect::<String>()
             .trim()
             .to_string();
-        dbg!(&name);
         Some(Attachment {
             url,
             name: Some(name),
