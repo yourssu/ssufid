@@ -2068,6 +2068,7 @@ dependencies = [
  "ssufid_lifelongedu",
  "ssufid_media",
  "ssufid_mediamba",
+ "ssufid_oasis",
  "ssufid_ssucatch",
  "ssufid_ssupath",
  "time",
@@ -2159,6 +2160,23 @@ dependencies = [
 
 [[package]]
 name = "ssufid_mediamba"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_oasis"
 version = "0.1.0"
 dependencies = [
  "futures",
