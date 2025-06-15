@@ -1,21 +1,33 @@
 [package]
-name = "lifelongedu"
+name = "ssufid_lifelongedu"
 version = "0.1.0"
-edition = "2024"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
 
 [dependencies]
-ssufid = { path = "../../packages/ssufid" } # Corrected path
-
-async-trait = "0.1"
-futures = "0.3"
-reqwest = { version = "0.12", features = ["json", "cookies"] }
-scraper = "0.19"
-thiserror = "1.0"
-time = { version = "0.3", features = ["macros", "formatting", "parsing"] }
-tokio = { version = "1", features = ["full"] }
-url = "2"
-tracing = "0.1"
-
+ssufid = { workspace = true }
+reqwest = { workspace = true, features = [
+  "charset",
+  "http2",
+  "macos-system-configuration",
+  "rustls-tls",
+  "cookies",
+  "gzip",
+  "brotli",
+] }
+scraper = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true, features = [
+  "serde",
+  "macros",
+  "formatting",
+  "parsing",
+] }
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
 [dev-dependencies]
-dotenvy = "0.15"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }

@@ -29,7 +29,7 @@ ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
 ssufid_ssupath = { workspace = true }
-lifelongedu = { workspace = true } # Renamed
+ssufid_lifelongedu = { workspace = true } # Reverted
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }

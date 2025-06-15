@@ -4,7 +4,11 @@ use futures::{StreamExt as _, stream::FuturesUnordered};
 use reqwest::Url;
 use scraper::{Html, Selector};
 use thiserror::Error;
-use time::{OffsetDateTime, PrimitiveDateTime, macros::format_description};
+use time::{
+    OffsetDateTime, PrimitiveDateTime,
+    format_description::BorrowedFormatItem,
+    macros::{format_description, offset},
+};
 
 // Corrected import path for ssufid types
 use ssufid::{
@@ -15,18 +19,16 @@ use ssufid::{
 static SELECTORS: LazyLock<Selectors> = LazyLock::new(Selectors::new);
 
 struct Selectors {
-    post_list_item: Selector,      // To get each post row from the list
-    post_link: Selector,           // To get the link (and thus wr_id) from a post row
-    post_title_in_list: Selector,  // To get title from list (used for logging/debugging)
-    post_author_in_list: Selector, // To get author from list
-    // post_date_in_list: Selector,   // To get date from list - UNUSED
-    notice_indicator: Selector, // To identify notice posts in the list
-    // next_page_link: Selector,      // To find the next page link - UNUSED
-    post_title: Selector,       // Title on the post page
-    post_author: Selector,      // Author on the post page (might be different selector)
-    post_date: Selector,        // Date on the post page
-    post_content: Selector,     // Main content of the post
-    post_attachments: Selector, // Links to attachments
+    post_list_item: Selector,
+    post_link: Selector,
+    post_title_in_list: Selector,
+    post_author_in_list: Selector,
+    notice_indicator: Selector,
+    post_title: Selector,
+    post_author: Selector,
+    post_date: Selector,
+    post_content: Selector,
+    post_attachments: Selector,
 }
 
 impl Selectors {
@@ -36,25 +38,28 @@ impl Selectors {
             post_link: Selector::parse("td.subject a").unwrap(),
             post_title_in_list: Selector::parse("td.subject a").unwrap(),
             post_author_in_list: Selector::parse("td.name span.member").unwrap(),
-            // post_date_in_list: Selector::parse("td.datetime").unwrap(), // Corrected from td.td_date to td.datetime based on HTML - UNUSED
-            notice_indicator: Selector::parse("td.num b").unwrap(), // Changed to target <b> in <td class="num"> for notices
-
-            // next_page_link: Selector::parse(
-            //     "div.pg_wrap span.pg a.pg_page[href*=\"page=\"]:not(.pg_end)",
-            // )
-            // .unwrap(), // More specific selector for page numbers, excluding "last page" link. - UNUSED
+            notice_indicator: Selector::parse("td.num b").unwrap(),
             post_title: Selector::parse("div[style*=\"font-size:13px; font-weight:bold\"]")
-                .unwrap(), // Adjusted based on observed HTML for post wr_id=710
-            post_author: Selector::parse("#bo_v_info span.sv_member").unwrap(), // Similar for author - assuming this is standard
+                .unwrap(),
+            post_author: Selector::parse(
+                "tr:first-child > td[style*=\"color:#888\"] > div[style*=\"float:left\"] .member",
+            )
+            .unwrap(),
             post_date: Selector::parse(
                 "div[style*=\"margin-top:6px\"] > span[style*=\"color:#888\"]",
             )
-            .unwrap(), // Adjusted based on observed HTML for post wr_id=710
-            post_content: Selector::parse("#writeContents").unwrap(), // Changed from #bo_v_con based on observed HTML
-            post_attachments: Selector::parse("#bo_v_file ul li a").unwrap(), // Attachment links - assuming this is standard
+            .unwrap(),
+            post_content: Selector::parse("#writeContents").unwrap(),
+            post_attachments: Selector::parse(
+                "img[src=\"../skin/board/basic/img/icon_file.gif\"] ~ a",
+            )
+            .unwrap(), // Attachment links - assuming this is standard
         }
     }
 }
+
+const DATE_FORMAT: &[BorrowedFormatItem<'_>] =
+    format_description!("[year]-[month]-[day] [hour]:[minute]");
 
 #[derive(Debug)]
 struct LifelongEduMetadata {
@@ -110,53 +115,55 @@ impl LifelongEduPlugin {
             .ok_or_else(|| LifelongEduError::IdNotFoundInUrl(url_str.to_string()))
     }
 
-    // fn parse_date_from_list(date_str: &str) -> Result<OffsetDateTime, LifelongEduError> {
-    //     // Dates on list are like "24-07-01"
-    //     let format = format_description!("[year repr:last_two]-[month]-[day]");
-    //     let parsed_date = Date::parse(date_str.trim(), &format)?;
-    //     let kst = time::macros::offset!(+9);
-    //     // Convert Date to OffsetDateTime at midnight KST
-    //     Ok(parsed_date.midnight().assume_offset(kst).to_offset(kst))
-    // }
-
     fn parse_datetime_from_post(datetime_str: &str) -> Result<OffsetDateTime, LifelongEduError> {
         // Expected input like "작성일 : YY-MM-DD HH:MM" or just "YY-MM-DD HH:MM"
-        let mut date_time_part_to_parse = if let Some(part) = datetime_str.split(" : ").nth(1) {
+        let date_time_part_to_parse = if let Some(part) = datetime_str.split(" : ").nth(1) {
             part.trim().to_string()
         } else {
             datetime_str.trim().to_string()
         };
-        tracing::debug!(
-            "Original date_time_part for parsing: '{}'",
-            date_time_part_to_parse
-        );
 
-        // If year seems to be two digits (e.g., "25-06-11 ...")
-        if date_time_part_to_parse.len() >= 5 && date_time_part_to_parse.as_bytes()[2] == b'-' {
-            // Check if the first two characters are digits
-            if date_time_part_to_parse.as_bytes()[0].is_ascii_digit()
-                && date_time_part_to_parse.as_bytes()[1].is_ascii_digit()
-            {
-                date_time_part_to_parse = format!("20{}", date_time_part_to_parse);
-            }
-        }
-        tracing::debug!(
-            "Attempting to parse with full year: '{}'",
-            date_time_part_to_parse
-        );
+        Ok(
+            PrimitiveDateTime::parse(&format!("20{}", date_time_part_to_parse), DATE_FORMAT)
+                .map_err(|e| {
+                    tracing::error!(
+                        "PrimitiveDateTime::parse failed for '{}': {:?}",
+                        date_time_part_to_parse,
+                        e
+                    );
+                    LifelongEduError::DateParse(e)
+                })?
+                .assume_offset(offset!(+9)),
+        )
+    }
 
-        let format = format_description!("[year]-[month]-[day] [hour]:[minute]");
-        let parsed_dt =
-            PrimitiveDateTime::parse(&date_time_part_to_parse, &format).map_err(|e| {
-                tracing::error!(
-                    "PrimitiveDateTime::parse failed for '{}': {:?}",
-                    date_time_part_to_parse,
-                    e
-                );
-                LifelongEduError::DateParse(e)
-            })?;
-        let kst = time::macros::offset!(+9);
-        Ok(parsed_dt.assume_offset(kst)) // Assume the parsed time is directly KST
+    fn as_attachment(element: scraper::ElementRef) -> Option<Attachment> {
+        let href = element.value().attr("href")?;
+        let mut args = href
+            .split("download(")
+            .nth(1)?
+            .strip_suffix(");")?
+            .split(", ")
+            .map(|s| s.trim_matches('\''));
+        let url = Url::parse(Self::BASE_URL)
+            .ok()?
+            .join(args.next()?.strip_prefix("./")?)
+            .ok()?
+            .to_string();
+        dbg!(&url);
+        let name = element
+            .child_elements()
+            .next()?
+            .text()
+            .collect::<String>()
+            .trim()
+            .to_string();
+        dbg!(&name);
+        Some(Attachment {
+            url,
+            name: Some(name),
+            mime_type: None,
+        })
     }
 
     async fn fetch_page_posts_metadata(
@@ -207,12 +214,12 @@ impl LifelongEduPlugin {
 
             // Construct absolute URL
             let base_url_obj = Url::parse(LifelongEduPlugin::BASE_URL).unwrap(); // Base URL of the board
-            let absolute_url = base_url_obj
+            let url = base_url_obj
                 .join(&partial_url)
                 .map_err(|_| LifelongEduError::UrlNotFound)? // Handle malformed partial_url
                 .to_string();
 
-            let id = Self::parse_wr_id_from_url(&absolute_url)?;
+            let id = Self::parse_wr_id_from_url(&url)?;
 
             let title = element
                 .select(&SELECTORS.post_title_in_list)
@@ -224,20 +231,12 @@ impl LifelongEduPlugin {
                 .select(&SELECTORS.post_author_in_list)
                 .next()
                 .map(|el| el.text().collect::<String>().trim().to_string())
-                .unwrap_or_else(|| "Unknown".to_string()); // Some posts might not have a visible author or use a different class
-
-            // Date parsing from list - currently unused for SsufidPost but good for metadata
-            // let _date_str = element
-            //     .select(&SELECTORS.post_date_in_list)
-            //     .next()
-            //     .map(|el| el.text().collect::<String>().trim().to_string())
-            //     .ok_or(LifelongEduError::DateNotFound)?;
-            // let _created_at_list = Self::parse_date_from_list(&_date_str)?;
+                .unwrap_or_else(|| "Unknown".to_string());
 
             posts_metadata.push(LifelongEduMetadata {
                 id,
-                url: absolute_url,
-                title, // Store title from list for now
+                url,
+                title,
                 author,
                 is_notice,
             });
@@ -292,26 +291,7 @@ impl LifelongEduPlugin {
 
         let attachments = document
             .select(&SELECTORS.post_attachments)
-            .filter_map(|element| {
-                element.value().attr("href").map(|href_val| {
-                    let name = element.text().collect::<String>().trim().to_string();
-                    // Attachment URLs on this site seem to be relative, need to join with a base
-                    // e.g. href="./download.php?bo_table=univ&wr_id=710&no=0"
-                    // The base for this is likely http://lifelongedu.ssu.ac.kr/bbs/
-                    let base_bbs_url = "http://lifelongedu.ssu.ac.kr/bbs/";
-                    let attachment_url = Url::parse(base_bbs_url)
-                        .unwrap()
-                        .join(href_val)
-                        .unwrap()
-                        .to_string();
-
-                    Attachment {
-                        name: Some(name),
-                        url: attachment_url,
-                        mime_type: None, // Can be guessed later if needed
-                    }
-                })
-            })
+            .filter_map(Self::as_attachment)
             .collect::<Vec<_>>();
 
         Ok(SsufidPost {
@@ -319,15 +299,15 @@ impl LifelongEduPlugin {
             url: metadata.url.clone(),
             title,
             author: Some(author_on_page),
-            description: None, // No separate description field typically
+            description: None,
             category: if metadata.is_notice {
                 vec!["공지".to_string()]
             } else {
                 vec![]
             },
             created_at,
-            updated_at: None, // No obvious updated_at field
-            thumbnail: None,  // No obvious thumbnail
+            updated_at: None,
+            thumbnail: None,
             content: content_html,
             attachments,
             metadata: None,
@@ -343,8 +323,8 @@ impl Default for LifelongEduPlugin {
 
 impl SsufidPlugin for LifelongEduPlugin {
     const IDENTIFIER: &'static str = "lifelongedu.ssu.ac.kr";
-    const TITLE: &'static str = "숭실대학교 평생교육원";
-    const DESCRIPTION: &'static str = "숭실대학교 평생교육원 학부 공지사항을 제공합니다.";
+    const TITLE: &'static str = "숭실대학교 평생교육학과";
+    const DESCRIPTION: &'static str = "숭실대학교 평생교육학과 공지사항을 제공합니다.";
     // Base URL for the board itself
     const BASE_URL: &'static str = "http://lifelongedu.ssu.ac.kr/bbs/board.php?bo_table=univ";
 
@@ -454,30 +434,6 @@ mod tests {
         assert!(LifelongEduPlugin::parse_wr_id_from_url(url3).is_err());
     }
 
-    /*
-    #[test]
-    fn test_date_parsing_logic() {
-        setup_tracing();
-        let date_str_list = "24-07-01";
-        // let parsed_list_date = SsuLifelongEduPlugin::parse_date_from_list(date_str_list).unwrap(); // Function commented out
-        // assert_eq!(parsed_list_date.year(), 2024);
-        // assert_eq!(parsed_list_date.month(), time::Month::July);
-        // assert_eq!(parsed_list_date.day(), 1);
-
-        let datetime_str_post1 = "게시일 : 24-07-02 11:20"; // Added colon for realistic test after split change
-        let parsed_post_dt1 = SsuLifelongEduPlugin::parse_datetime_from_post(datetime_str_post1).unwrap();
-        assert_eq!(parsed_post_dt1.year(), 2024);
-        assert_eq!(parsed_post_dt1.hour(), 11);
-        assert_eq!(parsed_post_dt1.minute(), 20);
-
-        let datetime_str_post2 = "24-06-30 09:05";
-         let parsed_post_dt2 = SsuLifelongEduPlugin::parse_datetime_from_post(datetime_str_post2).unwrap();
-        assert_eq!(parsed_post_dt2.year(), 2024);
-        assert_eq!(parsed_post_dt2.month(), time::Month::June);
-        assert_eq!(parsed_post_dt2.day(), 30);
-    }
-    */
-
     #[tokio::test]
     async fn test_fetch_page_metadata_real() {
         setup_tracing();
@@ -496,11 +452,29 @@ mod tests {
         // assert!(metadata.iter().any(|m| m.id == "710"));
     }
 
+    #[test]
+    fn test_parse_attachment() {
+        setup_tracing();
+        let html = r#"<a href="javascript:file_download('./download.php?bo_table=univ&amp;wr_id=709&amp;no=0', '%EA%B5%90%EB%82%B4%EC%9E%A5%ED%95%99%EA%B8%88+%EC%8B%A0%EC%B2%AD+%EB%A7%A4%EB%89%B4%EC%96%BC.pdf');" title="">&nbsp;<span style="color:#888;">교내장학금 신청 매뉴얼.pdf (374.8K)</span>&nbsp;<span style="color:#ff6600; font-size:11px;">[4]</span>&nbsp;<span style="color:#d3d3d3; font-size:11px;">DATE : 2025-06-04 11:58:11</span></a>"#;
+        let document = Html::parse_document(html);
+        let attachment_element = document
+            .select(&Selector::parse("a").unwrap())
+            .next()
+            .unwrap();
+        let attachment = SsuLifelongEduPlugin::as_attachment(attachment_element);
+        assert!(attachment.is_some());
+        let attachment = attachment.unwrap();
+        assert_eq!(
+            attachment.url,
+            "http://lifelongedu.ssu.ac.kr/bbs/download.php?bo_table=univ&wr_id=709&no=0"
+        );
+    }
+
     #[tokio::test]
     async fn test_fetch_single_post_real() {
         setup_tracing();
         // This wr_id might change, pick one from the latest page 1 listing if test fails
-        let sample_wr_id = "710";
+        let sample_wr_id = "709";
         let sample_url = format!(
             "http://lifelongedu.ssu.ac.kr/bbs/board.php?bo_table=univ&wr_id={}",
             sample_wr_id
@@ -517,13 +491,8 @@ mod tests {
 
         assert_eq!(post.id, sample_wr_id);
         assert!(!post.title.is_empty());
-        assert!(
-            post.title != "Test Title (from metadata)"
-                || post
-                    .title
-                    .contains("2025학년도 2학기 한국장학재단 국가장학금")
-        ); // Check if title was fetched from page
-        assert!(post.author.is_some());
+        assert!(post.title.contains("2025학년도 2학기 교내장학금"));
+        assert_eq!(post.author, Some("관리자".to_string()));
         assert!(!post.content.is_empty());
         tracing::info!("Fetched post: {:?}", post);
     }
