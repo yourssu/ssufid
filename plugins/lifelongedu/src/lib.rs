@@ -459,7 +459,7 @@ mod tests {
             .select(&Selector::parse("a").unwrap())
             .next()
             .unwrap();
-        let attachment = SsuLifelongEduPlugin::as_attachment(attachment_element);
+        let attachment = LifelongEduPlugin::as_attachment(attachment_element);
         assert!(attachment.is_some());
         let attachment = attachment.unwrap();
         assert_eq!(

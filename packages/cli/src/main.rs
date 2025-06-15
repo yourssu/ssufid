@@ -2,9 +2,9 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 
 use clap::Parser;
 use futures::future::join_all;
-use lifelongedu::LifelongEduPlugin;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_common::sites::*;
+use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
