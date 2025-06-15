@@ -108,8 +108,10 @@ jobs:
 
       - name: Report result to the Slack
         if: ${{ !inputs.dry-run && (failure() || steps.content_report.outputs.post_created > 0) }}
+        env:
+          SLACK_MESSAGE: ${{ steps.content_report.outputs.slack }}
         run: |
-          curl -F $'blocks=${{ steps.content_report.outputs.slack }}' -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
+          curl -F $"blocks=$SLACK_MESSAGE" -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
 
       - name: Archive artifacts
         if: ${{ !inputs.dry-run && always() }}
