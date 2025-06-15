@@ -7,12 +7,11 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-async-trait = { workspace = true }
 futures = { workspace = true }
 mime_guess = { workspace = true }
 reqwest = { workspace = true, features = ["json", "rustls-tls"] }
-scraper = "0.18" # Specific version for this plugin
-ssufid = { path = "../../packages/ssufid" }
+scraper = { workspace = true }
+ssufid = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true, features = ["macros", "serde"] }
 tokio = { workspace = true, features = ["full"] }

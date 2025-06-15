@@ -1,12 +1,24 @@
-use futures::{StreamExt, stream::FuturesOrdered};
+use futures::{TryStreamExt as _, stream::FuturesOrdered};
 use scraper::{Html, Selector};
 use ssufid::{
     core::{Attachment, SsufidPlugin, SsufidPost},
     error::PluginError,
 };
 use thiserror::Error;
-use time::{Date, macros::offset};
+use time::{
+    Date,
+    format_description::BorrowedFormatItem,
+    macros::{format_description, offset},
+};
 use url::Url;
+
+#[derive(Debug, Clone)]
+struct MePostData {
+    url: String,
+    id: String,
+    author: String,
+    date_str: String,
+}
 
 // Selectors
 struct Selectors {
@@ -26,25 +38,22 @@ struct Selectors {
 impl Selectors {
     fn new() -> Self {
         Self {
-            post_row: Selector::parse("table.board_list > tbody > tr").unwrap(),
+            post_row: Selector::parse("tbody > tr").unwrap(),
             post_link_and_title: Selector::parse("td.subject > a").unwrap(),
-            post_author: Selector::parse("td.writer").unwrap(),
-            post_date: Selector::parse("td.date").unwrap(),
-            post_id_param: "idx",
-            view_title: Selector::parse("div.view_head h4.ellipsis")
-                .unwrap_or_else(|_| Selector::parse("div.view_head h3.subject").unwrap()),
-            view_author: Selector::parse("div.view_info span.writer")
-                .unwrap_or_else(|_| Selector::parse("dl.writer dd").unwrap()),
-            view_date: Selector::parse("div.view_info span.date")
-                .unwrap_or_else(|_| Selector::parse("dl.date dd").unwrap()),
-            view_content: Selector::parse("div.view_content")
-                .unwrap_or_else(|_| Selector::parse("div.board_viewContent").unwrap()),
-            view_attachments_link: Selector::parse("div.file_attach_dl dd > a")
-                .unwrap_or_else(|_| Selector::parse("div.attach_file_dl a").unwrap()),
+            post_author: Selector::parse("td:nth-child(3)").unwrap(),
+            post_date: Selector::parse("td:nth-child(4)").unwrap(),
+            post_id_param: "no",
+            view_title: Selector::parse("div.view_tit h3.v_tit").unwrap(),
+            view_author: Selector::parse("div.view_tit ul.v_list > li:first-child").unwrap(),
+            view_date: Selector::parse("div.view_tit ul.v_list > li:last-child").unwrap(),
+            view_content: Selector::parse("div.view_con").unwrap(),
+            view_attachments_link: Selector::parse("li.file a.down_file").unwrap(),
             // next_page_link initialization was removed
         }
     }
 }
+
+const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
 #[derive(Debug, Error)]
 enum MePluginError {
@@ -92,6 +101,66 @@ impl MePlugin {
             .ok_or_else(|| MePluginError::MissingElement(selector_name.to_string()))
     }
 
+    async fn fetch_posts(&self, page_num: u32) -> Result<Vec<MePostData>, PluginError> {
+        let current_page_url = format!("{}?page={}", Self::BASE_URL, page_num);
+        tracing::info!("Crawling page: {}", current_page_url);
+
+        let response_text = self
+            .http_client
+            .get(&current_page_url)
+            .send()
+            .await
+            .map_err(|e| PluginError::request::<Self>(e.to_string()))?
+            .text()
+            .await
+            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
+
+        let document = Html::parse_document(&response_text);
+        document
+            .select(&self.selectors.post_row)
+            .map(|row_element| {
+                let link_element = row_element
+                    .select(&self.selectors.post_link_and_title)
+                    .next()
+                    .ok_or_else(|| {
+                        MePluginError::MissingElement("post_link_and_title".to_string())
+                    })?;
+
+                let post_href = link_element.value().attr("href").ok_or_else(|| {
+                    MePluginError::MissingElement("post_link_and_title href".to_string())
+                })?;
+
+                let base_url_obj = Url::parse(Self::BASE_URL).map_err(MePluginError::UrlParse)?;
+                let post_view_url = base_url_obj
+                    .join(post_href)
+                    .map_err(MePluginError::UrlParse)?
+                    .to_string();
+
+                let parsed_post_url =
+                    Url::parse(&post_view_url).map_err(MePluginError::UrlParse)?;
+                let post_id = parsed_post_url
+                    .query_pairs()
+                    .find(|(key, _)| key == self.selectors.post_id_param)
+                    .map(|(_, value)| value.into_owned())
+                    .ok_or_else(|| MePluginError::ParsePostId(post_view_url.clone()))?;
+
+                let _title = link_element.text().collect::<String>().trim().to_string();
+                let author =
+                    Self::get_text(&row_element, &self.selectors.post_author, "post_author")
+                        .unwrap_or_default();
+                let date_str = Self::get_text(&row_element, &self.selectors.post_date, "post_date")
+                    .unwrap_or_default();
+
+                Ok(MePostData {
+                    url: post_view_url,
+                    id: post_id,
+                    author,
+                    date_str,
+                })
+            })
+            .collect()
+    }
+
     // fn get_attr was removed as unused
 
     async fn fetch_post_details(
@@ -136,10 +205,7 @@ impl MePlugin {
             .filter(|s| !s.is_empty())
             .unwrap_or(list_date_str);
 
-        let date_format = time::format_description::parse("[year].[month].[day]").map_err(|e| {
-            PluginError::parse::<Self>(format!("Failed to parse date format description: {}", e))
-        })?;
-        let created_at = Date::parse(&date_str_on_page, &date_format)
+        let created_at = Date::parse(&date_str_on_page, &DATE_FORMAT)
             .map_err(MePluginError::DateParse)?
             .midnight()
             .assume_offset(offset!(+9));
@@ -196,151 +262,49 @@ impl SsufidPlugin for MePlugin {
     const IDENTIFIER: &'static str = "me.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 기계공학부";
     const DESCRIPTION: &'static str = "숭실대학교 기계공학부 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://me.ssu.ac.kr/notice/notice01.php";
+    const BASE_URL: &'static str = "https://me.ssu.ac.kr/notice/notice01.php";
 
-    fn crawl(
-        &self,
-        posts_limit: u32,
-    ) -> impl std::future::Future<Output = Result<Vec<SsufidPost>, PluginError>> + Send {
-        async move {
-            struct TempPostData {
-                url: String,
-                id: String,
-                author: String,
-                date_str: String,
+    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        let mut temp_posts_data = Vec::new();
+        let mut page_num = 1;
+        let mut posts_collected_count = 0;
+
+        loop {
+            if posts_limit > 0 && posts_collected_count >= posts_limit {
+                break;
             }
 
-            let mut all_posts_details_futures = FuturesOrdered::new();
-            let mut temp_posts_data = Vec::new();
-            let mut page_num = 1;
-            let mut posts_collected_count = 0;
+            let post_data = self.fetch_posts(page_num).await?;
 
-            loop {
-                if posts_limit > 0 && posts_collected_count >= posts_limit {
-                    break;
-                }
-
-                let current_page_url = format!("{}?curPage={}", Self::BASE_URL, page_num);
-                tracing::info!("Crawling page: {}", current_page_url);
-
-                let response_text = self
-                    .http_client
-                    .get(&current_page_url)
-                    .send()
-                    .await
-                    .map_err(|e| PluginError::request::<Self>(e.to_string()))?
-                    .text()
-                    .await
-                    .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
-
-                let mut posts_found_on_this_page = 0;
-                {
-                    let document = Html::parse_document(&response_text);
-                    for row_element in document.select(&self.selectors.post_row) {
-                        if posts_limit > 0 && posts_collected_count >= posts_limit {
-                            break;
-                        }
-
-                        let link_element_opt = row_element
-                            .select(&self.selectors.post_link_and_title)
-                            .next();
-                        if link_element_opt.is_none() {
-                            continue;
-                        }
-                        let link_element = link_element_opt.unwrap();
-
-                        let post_href = match link_element.value().attr("href") {
-                            Some(href) => href,
-                            None => {
-                                tracing::warn!(
-                                    "Could not find href for a post row on page {}",
-                                    page_num
-                                );
-                                continue;
-                            }
-                        };
-
-                        let base_url_obj =
-                            Url::parse(Self::BASE_URL).map_err(MePluginError::UrlParse)?;
-                        let post_view_url = base_url_obj
-                            .join(post_href)
-                            .map_err(MePluginError::UrlParse)?
-                            .to_string();
-
-                        let parsed_post_url =
-                            Url::parse(&post_view_url).map_err(MePluginError::UrlParse)?;
-                        let post_id = parsed_post_url
-                            .query_pairs()
-                            .find(|(key, _)| key == self.selectors.post_id_param)
-                            .map(|(_, value)| value.into_owned())
-                            .ok_or_else(|| MePluginError::ParsePostId(post_view_url.clone()))?;
-
-                        let _title = link_element.text().collect::<String>().trim().to_string();
-                        let author = Self::get_text(
-                            &row_element,
-                            &self.selectors.post_author,
-                            "post_author",
-                        )
-                        .unwrap_or_default();
-                        let date_str =
-                            Self::get_text(&row_element, &self.selectors.post_date, "post_date")
-                                .unwrap_or_default();
-
-                        temp_posts_data.push(TempPostData {
-                            url: post_view_url,
-                            id: post_id,
-                            author,
-                            date_str,
-                        });
-
-                        posts_found_on_this_page += 1;
-                        posts_collected_count += 1;
-                    }
-                }
-
-                if posts_found_on_this_page == 0 && page_num > 1 {
-                    tracing::info!("No posts found on page {}, assuming end.", page_num);
-                    break;
-                }
-                if posts_found_on_this_page == 0 && page_num == 1 && posts_collected_count == 0 {
-                    tracing::warn!(
-                        "No posts found on the first page: {}. Check selectors or website structure.",
-                        current_page_url
-                    );
-                    break;
-                }
-
-                page_num += 1;
-                if page_num > 50 {
-                    tracing::warn!(
-                        "Reached page 50, stopping pagination to prevent infinite loop."
-                    );
-                    break;
-                }
+            if post_data.is_empty() {
+                tracing::info!("No posts found on page {}, assuming end.", page_num);
+                break;
             }
+            posts_collected_count += post_data.len() as u32;
+            temp_posts_data.extend(post_data);
+            page_num += 1;
+            if page_num > 50 {
+                tracing::warn!("Reached page 50, stopping pagination to prevent infinite loop.");
+                break;
+            }
+        }
 
-            for temp_data in temp_posts_data {
-                all_posts_details_futures.push_back(self.fetch_post_details(
+        let mut all_posts: Vec<SsufidPost> = temp_posts_data
+            .into_iter()
+            .map(|temp_data| {
+                self.fetch_post_details(
                     temp_data.url,
                     temp_data.id,
                     temp_data.author,
                     temp_data.date_str,
-                ));
-            }
+                )
+            })
+            .collect::<FuturesOrdered<_>>()
+            .try_collect()
+            .await?;
 
-            let mut all_posts = Vec::new();
-            while let Some(post_result) = all_posts_details_futures.next().await {
-                match post_result {
-                    Ok(post) => all_posts.push(post),
-                    Err(e) => {
-                        tracing::error!("Failed to fetch post details (after list parse): {}", e)
-                    }
-                }
-            }
-
-            all_posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-            Ok(all_posts)
-        }
+        all_posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        Ok(all_posts)
     }
 }
 

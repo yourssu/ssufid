@@ -1,8 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["packages/*", "plugins/*"] # Ensure this line is clean
-
-# exclude = ["plugins/me"] # This line is removed
+members = ["packages/*", "plugins/*"]
 
 [workspace.package]
 edition = "2024"
@@ -34,7 +32,6 @@ url = "2.5.4"
 futures = "0.3.31"
 tracing = "0.1.41"
 mime_guess = "2.0.5"
-async-trait = "0.1.81" # Added async-trait
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
