@@ -268,10 +268,11 @@ impl SsufidPlugin for InfocomPlugin {
                             ))
                         })?;
 
-                    let parsed_date = Date::parse(&meta.date_str, &date_format).map_err(|e| {
+                    let cleaned_date_str = meta.date_str.replace(". ", ".");
+                    let parsed_date = Date::parse(&cleaned_date_str, &date_format).map_err(|e| {
                         PluginError::parse::<Self>(format!(
-                            "Failed to parse date string '{}' for post id {}: {}",
-                            &meta.date_str, &meta.id, e
+                            "Failed to parse date string '{}' (cleaned: '{}') for post id {}: {}",
+                            meta.date_str, cleaned_date_str, meta.id, e
                         ))
                     })?;
 
