@@ -1,0 +1,29 @@
+[package]
+name = "ssufid_ee"
+version = "0.1.0"
+edition.workspace = true
+description.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+reqwest = { workspace = true, features = [
+  "rustls-tls",
+  "gzip",
+  "brotli",
+  "charset",
+  "http2",
+  "macos-system-configuration",
+  "cookies",
+] }
+scraper = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+ssufid = { workspace = true }
+time = { workspace = true, features = ["macros", "formatting", "parsing"] }
+url = { workspace = true }
+futures = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+time = { workspace = true, features = ["macros"] }
