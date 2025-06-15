@@ -13,6 +13,7 @@ use ssufid_itsites::{
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
+use ssufid_aix::AixPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
@@ -98,6 +99,7 @@ pub enum SsufidPluginRegistry {
     SwBachelor(SwBachelorPlugin),
     SwGraduate(SwGraduatePlugin),
     SecBachelor(SecPlugin),
+    Aix(AixPlugin),
 }
 
 impl SsufidPluginRegistry {
@@ -137,6 +139,9 @@ impl SsufidPluginRegistry {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
             SsufidPluginRegistry::SecBachelor(plugin) => {
+                save_run(core, out_dir, plugin, posts_limit, retry_count).await
+            }
+            SsufidPluginRegistry::Aix(plugin) => {
                 save_run(core, out_dir, plugin, posts_limit, retry_count).await
             }
         }
@@ -201,6 +206,10 @@ fn construct_tasks(
         (
             SecPlugin::IDENTIFIER,
             SsufidPluginRegistry::SecBachelor(SecPlugin::default()),
+        ),
+        (
+            AixPlugin::IDENTIFIER,
+            SsufidPluginRegistry::Aix(AixPlugin::default())
         ),
     ];
 
