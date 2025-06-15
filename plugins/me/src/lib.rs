@@ -268,7 +268,7 @@ impl SsufidPlugin for MePlugin {
     const IDENTIFIER: &'static str = "me.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 기계공학부";
     const DESCRIPTION: &'static str = "숭실대학교 기계공학부 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://me.ssu.ac.kr/notice/notice01.php";
+    const BASE_URL: &'static str = "https://me.ssu.ac.kr/notice/notice01.php";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let mut temp_posts_data = Vec::new();
@@ -331,12 +331,13 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "me.ssu.ac.kr is geo-blocked outside Korea"]
     async fn test_fetch_single_post_directly() {
         setup_tracing();
         let plugin = MePlugin::new();
         let sample_post_idx = "3061557";
         let sample_post_url = format!(
-            "http://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
+            "https://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
             sample_post_idx
         );
         let sample_post_id = sample_post_idx.to_string();
@@ -374,6 +375,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "me.ssu.ac.kr is geo-blocked outside Korea"]
     async fn test_crawl_me_notices() {
         setup_tracing();
         let plugin = MePlugin::new();
