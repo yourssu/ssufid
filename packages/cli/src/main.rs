@@ -2,7 +2,6 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 
 use clap::Parser;
 use futures::future::join_all;
-use lifelongedu::SsuLifelongEduPlugin; // Renamed
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_itsites::{
     cse::{
@@ -11,6 +10,7 @@ use ssufid_itsites::{
     sec::SecPlugin,
     sw::{bachelor::SwBachelorPlugin, graduate::SwGraduatePlugin},
 };
+use ssufid_lifelongedu::SsuLifelongEduPlugin; // Reverted
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
