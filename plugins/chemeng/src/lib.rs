@@ -6,7 +6,7 @@ use thiserror::Error;
 use url::Url;
 
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost},
     error::PluginError,
 };
 use time::{Date, macros::format_description, macros::offset};
@@ -23,7 +23,6 @@ struct Selectors {
     post_author_info: Selector, // Changed from post_author_date_info
     post_date_info: Selector,   // New selector for date
     post_content: Selector,
-    post_attachments: Selector,
 }
 
 impl Selectors {
@@ -42,9 +41,6 @@ impl Selectors {
             post_date_info: Selector::parse("div.board-view > div.head > div.info > span.date")
                 .unwrap(),
             post_content: Selector::parse("div.board-view > div.body").unwrap(),
-            // Refined attachment selector
-            post_attachments: Selector::parse("div.board-view > div.body div.attach-file-list a")
-                .unwrap(),
         }
     }
 }
@@ -302,59 +298,30 @@ impl ChemEngPlugin {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| post_metadata.date_str_on_list.clone());
 
-        let final_date_str = if Date::parse(&date_str_from_page, Self::DATE_FORMAT_PARSE).is_ok() {
-            date_str_from_page
-        } else {
-            tracing::warn!(
-                message = "Date format error on detail page, falling back to list date.",
-                parsed_date_str = %date_str_from_page,
-                fallback_date_str = %post_metadata.date_str_on_list,
-                post_id = %post_metadata.id
-            );
-            post_metadata.date_str_on_list // Fallback to list date
-        };
-
-        let created_at_date =
-            Date::parse(&final_date_str, Self::DATE_FORMAT_PARSE).map_err(|e| {
+        let created_at_date = Date::parse(&date_str_from_page, Self::DATE_FORMAT_PARSE)
+            .or_else(|e| {
+                tracing::warn!(
+                    error = ?e,
+                    message = "Date format error on detail page, falling back to list date.",
+                    parsed_date_str = %date_str_from_page,
+                    fallback_date_str = %post_metadata.date_str_on_list,
+                    post_id = %post_metadata.id
+                );
+                Date::parse(&post_metadata.date_str_on_list, Self::DATE_FORMAT_PARSE)
+            })
+            .map_err(|e| {
                 PluginError::parse::<Self>(format!(
                     "Failed to parse date '{}' for post {}: {}",
-                    final_date_str, post_metadata.id, e
+                    &post_metadata.date_str_on_list, post_metadata.id, e
                 ))
             })?;
         let created_at = created_at_date.midnight().assume_offset(offset!(+9));
 
-        let content_html = document
+        let content = document
             .select(&self.selectors.post_content)
             .next()
             .map(|el| el.html())
             .unwrap_or_default();
-
-        let attachments = document
-            .select(&self.selectors.post_attachments)
-            .filter_map(|element| {
-                element.value().attr("href").and_then(|href_val| {
-                    match self.get_base_url_object().join(href_val) {
-                        Ok(full_url) => {
-                            let name = element.text().collect::<String>().trim().to_string();
-                            Some(Attachment {
-                                name: Some(name).filter(|n| !n.is_empty()),
-                                url: full_url.to_string(),
-                                mime_type: None,
-                            })
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to parse attachment URL '{}' for post {}: {}",
-                                href_val,
-                                post_metadata.id,
-                                e
-                            );
-                            None
-                        }
-                    }
-                })
-            })
-            .collect();
 
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
@@ -364,10 +331,10 @@ impl ChemEngPlugin {
             description: None,
             category: vec!["학부공지사항".to_string()],
             created_at,
+            content,
             updated_at: None,
             thumbnail: None,
-            content: content_html,
-            attachments,
+            attachments: vec![],
             metadata: None,
         })
     }
@@ -654,39 +621,15 @@ mod tests {
                     "Post content should not be empty. If empty, detail page content selector ('{:?}') might be wrong or content is indeed empty.",
                     plugin.selectors.post_content
                 );
-                // Attachments are optional. Log them if any.
-                if !post.attachments.is_empty() {
-                    tracing::info!(
-                        "Found {} attachments for post {}:",
-                        post.attachments.len(),
-                        post.id
-                    );
-                    for (i, att) in post.attachments.iter().enumerate() {
-                        tracing::info!(
-                            "Attachment {}: Name='{:?}', URL='{}'",
-                            i + 1,
-                            att.name,
-                            att.url
-                        );
-                        assert!(
-                            att.url.starts_with("http"),
-                            "Attachment URL '{}' should be absolute.",
-                            att.url
-                        );
-                    }
-                } else {
-                    tracing::info!("No attachments found for post {}.", post.id);
-                }
             }
             Err(e) => {
                 panic!(
-                    "Failed to fetch the sample post (ID: {}): {:?}. Check detail page selectors ('title:{:?}', 'author_date_info:{:?}', 'content:{:?}', 'attachments:{:?}'), network, or if the specific post structure is unusual.",
+                    "Failed to fetch the sample post (ID: {}): {:?}. Check detail page selectors ('title:{:?}', 'author_date_info:{:?}', 'content:{:?}'), network, or if the specific post structure is unusual.",
                     sample_metadata_id_for_error,
                     e,
                     plugin.selectors.post_title,
                     plugin.selectors.post_author_info, // Corrected to author_info
                     plugin.selectors.post_content,
-                    plugin.selectors.post_attachments
                 );
             }
         }
@@ -763,6 +706,7 @@ mod tests {
                         "Crawled post (ID: {}) should have a title.",
                         post.id
                     );
+                    tracing::info!(?post);
                 }
             }
             Err(e) => {
