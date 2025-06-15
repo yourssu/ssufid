@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
@@ -91,6 +92,7 @@ register_plugins! {
     Actx(ActxPlugin) => ActxPlugin::new(),
     Bioinfo(BioinfoPlugin) => BioinfoPlugin::new(),
     Chem(ChemPlugin) => ChemPlugin::new(),
+    ChemEng(ChemEngPlugin) => ChemEngPlugin::new(),
     Chilan(ChilanPlugin) => ChilanPlugin::new(),
     CseBachelor(CseBachelorPlugin) => CseBachelorPlugin::new(),
     CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),
