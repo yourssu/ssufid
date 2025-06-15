@@ -221,7 +221,7 @@ impl MePlugin {
             .filter_map(|a_tag| {
                 let href = a_tag.value().attr("href")?;
                 let name = a_tag.text().collect::<String>().trim().to_string();
-                let base_url_for_resolve = Url::parse("http://me.ssu.ac.kr/notice/").ok()?;
+                let base_url_for_resolve = Url::parse(Self::BASE_URL).ok()?;
                 let attachment_url = base_url_for_resolve
                     .join(href)
                     .map(|u| u.to_string())
@@ -304,6 +304,7 @@ impl SsufidPlugin for MePlugin {
             .await?;
 
         all_posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        all_posts.truncate(posts_limit as usize);
         Ok(all_posts)
     }
 }
@@ -315,14 +316,14 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_single_post_directly() {
         let plugin = MePlugin::new();
-        let sample_post_idx = "6008788";
+        let sample_post_idx = "3061557";
         let sample_post_url = format!(
-            "http://me.ssu.ac.kr/notice/notice01_view.php?idx={}",
+            "https://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
             sample_post_idx
         );
         let sample_post_id = sample_post_idx.to_string();
-        let sample_author = "기계공학부".to_string();
-        let sample_date_str = "2023.01.01".to_string();
+        let sample_author = "관리자".to_string();
+        let sample_date_str = "2024-11-22".to_string();
 
         match plugin
             .fetch_post_details(
@@ -342,6 +343,7 @@ mod tests {
                     !post.content.is_empty(),
                     "Post content should not be empty (fetched from view page)"
                 );
+                assert!(!post.attachments.is_empty(), "Post should have attachments");
                 println!("Fetched single post successfully: {:?}", post);
             }
             Err(e) => {
@@ -373,7 +375,7 @@ mod tests {
                     for post in &posts {
                         assert!(!post.id.is_empty(), "Post ID is empty");
                         assert!(
-                            post.url.starts_with("http://me.ssu.ac.kr"),
+                            post.url.starts_with("https://me.ssu.ac.kr"),
                             "Post URL ( {} ) is invalid",
                             post.url
                         );
