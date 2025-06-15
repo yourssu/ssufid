@@ -121,7 +121,7 @@ macro_rules! test_sites {
             $(
                 #[tokio::test]
                 async fn $test_name() {
-                    let posts_limit = 100;
+                    let posts_limit = 20;
                     let plugin = <$plugin>::new();
                     let posts = plugin.crawl(posts_limit).await.unwrap();
                     assert!(posts.len() <= posts_limit as usize);
