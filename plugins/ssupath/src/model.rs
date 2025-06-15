@@ -10,11 +10,11 @@ use time::OffsetDateTime;
 
 use ssufid::PluginError;
 
-use crate::{SsuPathPlugin, utils::ElementRefExt as _};
+use crate::{utils::ElementRefExt as _, SsuPathPlugin};
 
 use super::{
-    SsuPathPluginError,
     utils::{OptionExt, ParseDateRange},
+    SsuPathPluginError,
 };
 
 pub struct SsuPathProgramDivision {

@@ -7,8 +7,8 @@ use time::OffsetDateTime;
 use ssufid::PluginError;
 
 use crate::{
+    utils::{serialize_date_range, ElementRefExt, OptionExt, ParseDateRange as _},
     SsuPathPlugin, SsuPathPluginError,
-    utils::{ElementRefExt, OptionExt, ParseDateRange as _, serialize_date_range},
 };
 pub struct SsuPathProgramTable {
     pub title: String,
