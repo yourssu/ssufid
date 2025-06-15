@@ -2034,6 +2034,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ssufid_aix"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "ssufid_chemeng"
 version = "0.1.0"
 dependencies = [
@@ -2062,6 +2077,7 @@ dependencies = [
  "serde",
  "serde_json",
  "ssufid",
+ "ssufid_aix",
  "ssufid_chemeng",
  "ssufid_common",
  "ssufid_ee",

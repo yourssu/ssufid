@@ -3,6 +3,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 use clap::Parser;
 use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid_aix::AixPlugin;
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
@@ -91,6 +92,7 @@ async fn main() -> eyre::Result<()> {
 register_plugins! {
     Accounting(AccountingPlugin) => AccountingPlugin::new(),
     Actx(ActxPlugin) => ActxPlugin::new(),
+    Aix(AixPlugin) => AixPlugin, // Changed from AixPlugin::default()
     Bioinfo(BioinfoPlugin) => BioinfoPlugin::new(),
     Chem(ChemPlugin) => ChemPlugin::new(),
     ChemEng(ChemEngPlugin) => ChemEngPlugin::new(),

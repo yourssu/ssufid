@@ -1,0 +1,23 @@
+[package]
+name = "ssufid_aix"
+version = "0.1.0"
+edition = "2024"
+description.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ssufid = { path = "../../packages/ssufid", features = ["rss"] }
+reqwest = { workspace = true, features = ["json", "charset", "rustls-tls"] }
+scraper = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+thiserror = { workspace = true }
+url = { workspace = true }
+futures = { workspace = true }
+time = { workspace = true, features = ["macros", "formatting", "parsing"] }
+tracing = { workspace = true } # Made non-optional
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] } # For tests
