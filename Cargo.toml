@@ -40,4 +40,4 @@ ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
 ssufid_ssupath = { path = "plugins/ssupath" }
-aix = { path = "plugins/aix" }
+ssufid_aix = { path = "plugins/aix" }
