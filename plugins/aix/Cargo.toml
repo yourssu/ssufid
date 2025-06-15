@@ -1,7 +1,7 @@
 [package]
-name = "ssufid_aix"
+name = "aix"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 authors = ["Your Name <you@example.com>"] # Replace with actual author info if available, otherwise this is fine.
 description = "Ssufid plugin for SSU AI융합학부 notices"
@@ -18,7 +18,6 @@ thiserror = "1.0"
 url = "2.5"
 futures = "0.3"
 tracing = "0.1"
-async-trait = "0.1" # Added async-trait
 log = "0.4" # Added log
 
 [lib]
