@@ -5,6 +5,7 @@ use futures::future::join_all;
 use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
+use ssufid_ee::EePlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
@@ -98,6 +99,7 @@ register_plugins! {
     CseGraduate(CseGraduatePlugin) => CseGraduatePlugin::new(),
     CseEmployment(CseEmploymentPlugin) => CseEmploymentPlugin::new(),
     Docs(DocsPlugin) => DocsPlugin::new(),
+    Ee(EePlugin) => EePlugin::default(),
     Eco(EcoPlugin) => EcoPlugin::new(),
     Englan(EnglanPlugin) => EnglanPlugin::new(),
     Ensb(EnsbPlugin) => EnsbPlugin::new(),
