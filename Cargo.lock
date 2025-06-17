@@ -2071,6 +2071,7 @@ dependencies = [
  "ssufid_oasis",
  "ssufid_ssucatch",
  "ssufid_ssupath",
+ "ssufid_startup",
  "time",
  "tokio",
  "tracing",
@@ -2220,6 +2221,23 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_startup"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
  "ssufid",
  "thiserror",
  "time",
