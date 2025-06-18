@@ -1,7 +1,11 @@
 use futures::{StreamExt as _, stream::FuturesOrdered};
-use scraper::{Html, Selector};
+use scraper::{ElementRef, Html, Selector};
 use thiserror::Error;
-use time::{Date, OffsetDateTime, macros::offset}; // Removed unused Rfc3339
+use time::{
+    Date,
+    format_description::BorrowedFormatItem,
+    macros::{format_description, offset},
+}; // Removed unused Rfc3339
 use url::Url; // Added OffsetDateTime
 
 // Use actual package name 'ssufid' and correct module path
@@ -13,10 +17,9 @@ use ssufid::{
 struct Selectors {
     post_row: Selector,
     post_link_and_title: Selector,
-    view_table_rows: Selector,
-    view_content_container: Selector,
-    view_attachments_container: Selector,
-    view_attachment_link: Selector,
+    metadata_list: Selector,
+    view_content: Selector,
+    attachment_links: Selector,
 }
 
 impl Selectors {
@@ -24,24 +27,17 @@ impl Selectors {
         Self {
             // For list page:
             // Table rows are under form name="board_list", then table > tbody > tr
-            post_row: Selector::parse("form[name='board_list'] > table > tbody > tr")
+            post_row: Selector::parse("div.board_list > table > tbody > tr")
                 .expect("Failed to parse post_row selector"),
             // Title is in the 3rd td, contains an <a> tag with mode=view in href.
-            post_link_and_title: Selector::parse("td:nth-child(3) > a[href*='mode=view']")
+            post_link_and_title: Selector::parse("td.subject > a")
                 .expect("Failed to parse post_link_and_title selector"),
-            // For post view page:
-            // Table rows containing metadata like title, author, date.
-            view_table_rows: Selector::parse("form[name='board_view_frm'] > table > tbody > tr")
-                .expect("Failed to parse view_table_rows selector"),
-            // Main content container for the post body.
-            view_content_container: Selector::parse("td.content")
-                .expect("Failed to parse view_content_container selector"),
-            // Container for attachment links (speculative).
-            view_attachments_container: Selector::parse("div.attach")
-                .expect("Failed to parse view_attachments_container selector"),
-            // Individual attachment links (speculative).
-            view_attachment_link: Selector::parse("a[href*='board_download']")
-                .expect("Failed to parse view_attachment_link selector"),
+            metadata_list: Selector::parse("div.board_view > dl")
+                .expect("Failed to parse metadata_list selector"),
+            view_content: Selector::parse("div.view_content")
+                .expect("Failed to parse view_content selector"),
+            attachment_links: Selector::parse("a[title='첨부파일 내려받기(새창열림)")
+                .expect("Failed to parse attachment_links selector"),
         }
     }
 }
@@ -69,6 +65,8 @@ impl Default for InsoPlugin {
     }
 }
 
+const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]-[month]-[day]");
+
 impl InsoPlugin {
     pub fn new() -> Self {
         Self {
@@ -79,13 +77,11 @@ impl InsoPlugin {
 
     async fn fetch_page_posts_metadata(
         &self,
-        category_param: &str,
         page_offset: u32,
     ) -> Result<Vec<InsoPostMetadata>, PluginError> {
         let list_url = format!(
-            "{}/sub/sub04_01.php?boardid=notice&category={}&mode=list&offset={}",
+            "{}?boardid=notice&category=&mode=list&offset={}",
             Self::BASE_URL,
-            category_param,
             page_offset
         );
 
@@ -109,38 +105,13 @@ impl InsoPlugin {
                 .select(&self.selectors.post_link_and_title)
                 .next()
             {
-                let relative_url = match link_element.value().attr("href") {
-                    Some(href) => href.to_string(),
-                    None => {
-                        tracing::warn!("Found a post row without a link. Skipping.");
-                        continue;
-                    }
-                };
+                let relative_url = link_element.value().attr("href").ok_or_else(|| {
+                    PluginError::parse::<Self>(
+                        "Failed to find 'href' attribute in post link".to_string(),
+                    )
+                })?;
 
-                let base_path_for_relative_url = Url::parse(&list_url)
-                    .map_err(|e| {
-                        PluginError::parse::<Self>(format!(
-                            "Base URL for list failed to parse: {}",
-                            e
-                        ))
-                    })?
-                    .join("./")
-                    .map_err(|e| {
-                        PluginError::parse::<Self>(format!(
-                            "Failed to establish base path for relative URLs: {}",
-                            e
-                        ))
-                    })?;
-
-                let absolute_post_url = base_path_for_relative_url
-                    .join(&relative_url)
-                    .map_err(|e| {
-                        PluginError::parse::<Self>(format!(
-                            "Failed to join post URL: {}. Base: {}, Relative: {}",
-                            e, base_path_for_relative_url, relative_url
-                        ))
-                    })?
-                    .to_string();
+                let absolute_post_url = format!("http://inso.ssu.ac.kr{}", relative_url);
 
                 let parsed_url = Url::parse(&absolute_post_url)
                     .map_err(|e| InsoPluginError::UrlParseError(e.to_string()))
@@ -195,102 +166,89 @@ impl InsoPlugin {
 
         let document = Html::parse_document(&response_text);
 
-        let mut title = String::new();
-        let mut author = String::new();
-        let mut date_str = String::new();
-        let mut category_str = String::new();
+        let mut metadata = document.select(&self.selectors.metadata_list);
 
-        for row_element in document.select(&self.selectors.view_table_rows) {
-            let th_texts: Vec<String> = row_element
-                .select(&Selector::parse("th").unwrap())
-                .map(|el| el.text().collect::<String>().trim().to_lowercase())
-                .collect();
-            let td_texts: Vec<String> = row_element
-                .select(&Selector::parse("td").unwrap())
-                .map(|el| el.text().collect::<String>().trim().to_string())
-                .collect();
-
-            if let Some(th_text) = th_texts.first() {
-                if let Some(td_text) = td_texts.first() {
-                    match th_text.as_str() {
-                        "제목" => title = td_text.clone(),
-                        "작성자" => author = td_text.clone(),
-                        "작성일자" => date_str = td_text.clone(),
-                        "분류" => category_str = td_text.clone(),
-                        _ => {}
-                    }
-                }
-            }
-        }
-
-        if title.is_empty() {
-            tracing::warn!(url = %post_metadata.url, "Title not found using view_table_rows selector. Attempting fallback based on text output structure.");
-        }
-
-        let created_at = if !date_str.is_empty() {
-            let date_format =
-                time::format_description::parse("[year]-[month]-[day]").map_err(|e| {
-                    PluginError::parse::<Self>(format!("Failed to parse date format: {}", e))
-                })?;
-            Date::parse(&date_str, &date_format)
-                .map_err(|e| {
-                    PluginError::parse::<Self>(format!(
-                        "Failed to parse date string '{}': {}",
-                        date_str, e
-                    ))
+        fn extract_str(elem: Option<ElementRef<'_>>) -> Result<String, PluginError> {
+            Ok(elem
+                .ok_or_else(|| {
+                    PluginError::parse::<InsoPlugin>(
+                        "No title found in the post content".to_string(),
+                    )
                 })?
-                .midnight()
-                .assume_offset(offset!(+9)) // KST
-        } else {
-            tracing::warn!(url = %post_metadata.url, "Date string is empty. Defaulting to current time (this might be incorrect).");
-            OffsetDateTime::now_utc().to_offset(offset!(+9))
-        };
+                .child_elements()
+                .last()
+                .ok_or_else(|| {
+                    PluginError::parse::<InsoPlugin>(
+                        "No title found in the post content".to_string(),
+                    )
+                })?
+                .text()
+                .collect::<String>()
+                .trim()
+                .to_string())
+        }
 
-        let content = document
-            .select(&self.selectors.view_content_container)
-            .next()
-            .map_or_else(
-                || {
-                    tracing::warn!(url = %post_metadata.url, "Content container 'td.content' not found. Content will be empty.");
-                    String::new()
-                },
-                |el| el.inner_html()
-            );
+        let title = extract_str(metadata.next())
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract title: {}", e)))?;
+
+        let author = extract_str(metadata.next())
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract author: {}", e)))?;
+
+        let date_str = extract_str(metadata.next())
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract date: {}", e)))?;
+
+        let date = Date::parse(&date_str, DATE_FORMAT)
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse date: {e:?}")))?
+            .midnight()
+            .assume_offset(offset!(+09:00));
+
+        let category = extract_str(metadata.nth(1)).map_err(|e| {
+            PluginError::parse::<Self>(format!("Failed to extract category: {}", e))
+        })?;
 
         let mut attachments = Vec::new();
-        if let Some(attachment_container) = document
-            .select(&self.selectors.view_attachments_container)
-            .next()
-        {
-            for link_element in attachment_container.select(&self.selectors.view_attachment_link) {
-                if let Some(href) = link_element.value().attr("href") {
-                    let attachment_name =
-                        link_element.text().collect::<String>().trim().to_string();
-                    let attachment_url = Url::parse(Self::BASE_URL)
-                        .map_err(|e| {
-                            PluginError::parse::<Self>(format!(
-                                "Failed to parse BASE_URL for attachment: {}",
-                                e
-                            ))
-                        })?
-                        .join(href)
-                        .map_err(|e| {
-                            PluginError::parse::<Self>(format!(
-                                "Failed to join attachment URL: {}",
-                                e
-                            ))
-                        })?
-                        .to_string();
-                    attachments.push(Attachment {
-                        name: Some(attachment_name).filter(|s| !s.is_empty()),
-                        url: attachment_url,
-                        mime_type: None,
-                    });
-                }
+
+        for link_element in document.select(&self.selectors.attachment_links) {
+            if let Some(href) = link_element.value().attr("href") {
+                let attachment_name = link_element.text().collect::<String>().trim().to_string();
+                let mut script_parsed = href
+                    .split("('")
+                    .nth(1)
+                    .and_then(|s| s.split("')").next())
+                    .ok_or_else(|| {
+                        PluginError::parse::<Self>("Failed to parse attachment URL".to_string())
+                    })?
+                    .split("','");
+                let board_id = script_parsed.next().ok_or_else(|| {
+                    PluginError::parse::<Self>(
+                        "Failed to parse board ID from attachment URL".to_string(),
+                    )
+                })?;
+                let b_idx = script_parsed.next().ok_or_else(|| {
+                    PluginError::parse::<Self>(
+                        "Failed to parse b_idx from attachment URL".to_string(),
+                    )
+                })?;
+                let idx = script_parsed.next().ok_or_else(|| {
+                    PluginError::parse::<Self>(
+                        "Failed to parse idx from attachment URL".to_string(),
+                    )
+                })?;
+                attachments.push(Attachment {
+                    name: Some(attachment_name).filter(|s| !s.is_empty()),
+                    url: format!("http://inso.ssu.ac.kr/module/board/download.php?boardid={board_id}&b_idx={b_idx}&idx={idx}"),
+                    mime_type: None,
+                });
             }
-        } else {
-            tracing::debug!(url = %post_metadata.url, "Attachment container 'div.attach' not found. Assuming no attachments via this selector.");
         }
+
+        let content = document
+            .select(&self.selectors.view_content)
+            .next()
+            .map(|el| el.inner_html())
+            .ok_or_else(|| {
+                PluginError::parse::<Self>("Failed to find content in the post".to_string())
+            })?;
 
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
@@ -298,12 +256,8 @@ impl InsoPlugin {
             title,
             author: Some(author).filter(|s| !s.is_empty()),
             description: None,
-            category: if category_str.is_empty() {
-                vec![]
-            } else {
-                vec![category_str]
-            },
-            created_at,
+            category: vec![category],
+            created_at: date,
             updated_at: None,
             thumbnail: None,
             content,
@@ -317,7 +271,7 @@ impl SsufidPlugin for InsoPlugin {
     const IDENTIFIER: &'static str = "inso.ssu.ac.kr";
     const TITLE: &'static str = "정보사회학과 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 정보사회학과 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://inso.ssu.ac.kr";
+    const BASE_URL: &'static str = "http://inso.ssu.ac.kr/sub/sub04_01.php";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         if posts_limit == 0 {
@@ -325,12 +279,9 @@ impl SsufidPlugin for InsoPlugin {
             return Ok(Vec::new());
         }
 
-        let category_param = "%ED%95%99%EC%83%9D%EA%B3%B5%EC%A7%80";
-
         tracing::info!(
-            "Starting crawl for plugin: {}, category: {}, posts_limit: {}",
+            "Starting crawl for plugin: {},  posts_limit: {}",
             Self::IDENTIFIER,
-            category_param,
             posts_limit
         );
 
@@ -340,9 +291,7 @@ impl SsufidPlugin for InsoPlugin {
 
         loop {
             tracing::debug!("Fetching metadata page with offset: {}", current_offset);
-            let metadata_from_page = self
-                .fetch_page_posts_metadata(category_param, current_offset)
-                .await?;
+            let metadata_from_page = self.fetch_page_posts_metadata(current_offset).await?;
 
             if metadata_from_page.is_empty() {
                 tracing::info!(
