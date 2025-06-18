@@ -2069,6 +2069,7 @@ dependencies = [
  "ssufid_media",
  "ssufid_mediamba",
  "ssufid_oasis",
+ "ssufid_ssfilm",
  "ssufid_ssucatch",
  "ssufid_ssupath",
  "ssufid_startup",
@@ -2183,6 +2184,22 @@ dependencies = [
  "futures",
  "reqwest",
  "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_ssfilm"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
  "serde",
  "serde_json",
  "ssufid",
