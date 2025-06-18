@@ -13,6 +13,7 @@ use ssufid_oasis::OasisPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use ssufid_startup::StartupPlugin;
+use ssufid_study::StudyPlugin;
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
@@ -135,6 +136,7 @@ register_plugins! {
         std::env::var("SSU_PASSWORD").unwrap_or_default()
     )),
     Startup(StartupPlugin) => StartupPlugin,
+    Study(StudyPlugin) => StudyPlugin,
     Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
