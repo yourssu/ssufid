@@ -116,6 +116,7 @@ register_plugins! {
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
+    Lawyer(LawyerPlugin) => LawyerPlugin::new(),
     LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
@@ -139,7 +140,6 @@ register_plugins! {
     Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
-    LawyerCollege(LawyerPlugin) => LawyerPlugin::default(), // Added plugin
 }
 
 pub(crate) async fn save_run<T: SsufidPlugin>(

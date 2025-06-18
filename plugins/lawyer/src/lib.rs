@@ -1,10 +1,11 @@
+use std::collections::HashMap;
+
 // Removed: use std::future::Future;
 // Removed: use std::pin::Pin;
 use futures::{StreamExt, stream::FuturesOrdered}; // Removed FutureExt
 use scraper::{Html, Selector}; // Added back missing import
 // Removed: use thiserror::Error;
-use time::Date;
-use url::Url;
+use time::{Date, macros::offset};
 
 use ssufid::{
     core::{Attachment, SsufidPlugin, SsufidPost},
@@ -24,7 +25,7 @@ struct Selectors {
 impl Selectors {
     fn new() -> Self {
         Self {
-            post_item: Selector::parse("div.board-list-body > div.col")
+            post_item: Selector::parse("div.board-list-body > div.col:not(.noti)")
                 .expect("Failed to parse post_item selector"),
             post_title: Selector::parse("p.b-title > a")
                 .expect("Failed to parse post_title selector"),
@@ -35,7 +36,7 @@ impl Selectors {
                 .expect("Failed to parse detail_date selector"),
             detail_content: Selector::parse("div.board-content")
                 .expect("Failed to parse detail_content selector"),
-            detail_attachments: Selector::parse("div.board-attach a")
+            detail_attachments: Selector::parse("div.board-attach file")
                 .expect("Failed to parse detail_attachments selector"),
         }
     }
@@ -44,6 +45,12 @@ impl Selectors {
 pub struct LawyerPlugin {
     selectors: Selectors,
     http_client: reqwest::Client,
+}
+
+impl LawyerPlugin {
+    pub fn new() -> Self {
+        Self::default()
+    }
 }
 
 impl Default for LawyerPlugin {
@@ -58,35 +65,172 @@ impl Default for LawyerPlugin {
 #[derive(Debug)]
 struct PostMetadata {
     id: String,
-    url: Url,
     title: String,
     date_str: String,
 }
 
+impl PartialEq for PostMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl SsufidPlugin for LawyerPlugin {
+    const IDENTIFIER: &'static str = "lawyer.ssu.ac.kr";
+    const TITLE: &'static str = "숭실대학교 국제법무학과";
+    const DESCRIPTION: &'static str = "숭실대학교 국제법무학과 홈페이지의 공지사항을 제공합니다.";
+    const BASE_URL: &'static str = "http://lawyer.ssu.ac.kr/web/05/notice_list.do";
+
+    // Applied clippy's suggestion for needless_lifetimes (removed 'a)
+    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
+        let mut all_posts_metadata: Vec<PostMetadata> = Vec::new();
+        let mut current_page_num = 1;
+        const MAX_PAGES_TO_CRAWL: u32 = 500; // Safety break
+
+        tracing::debug!(
+            "Starting crawl for plugin: {}, posts_limit: {}",
+            Self::IDENTIFIER,
+            posts_limit
+        );
+
+        loop {
+            tracing::debug!(
+                "Attempting to fetch metadata from page {}",
+                current_page_num
+            );
+            let metadata_on_page = match self.fetch_page_posts_metadata(current_page_num).await {
+                Ok(metadata) => metadata,
+                Err(e) => {
+                    // If a page fetch fails, decide if it's critical or skippable
+                    // For now, let's assume it's critical for a specific page,
+                    // but if it's a request error for a non-first page, maybe log and break.
+                    if current_page_num == 1 {
+                        tracing::error!("Failed to fetch metadata from first page: {:?}", e);
+                        return Err(e);
+                    } else {
+                        tracing::warn!(
+                            "Failed to fetch metadata from page {}: {:?}. Assuming end of posts.",
+                            current_page_num,
+                            e
+                        );
+                        break; // Stop if a subsequent page fails
+                    }
+                }
+            };
+
+            if metadata_on_page.is_empty() {
+                tracing::debug!(
+                    "No more posts found on page {}. Assuming it's the last page or page is empty.",
+                    current_page_num
+                );
+                break;
+            }
+
+            all_posts_metadata.extend(metadata_on_page);
+
+            all_posts_metadata.dedup();
+
+            if posts_limit > 0 && all_posts_metadata.len() >= posts_limit as usize {
+                tracing::debug!(
+                    "Reached or exceeded posts_limit ({}) with {} posts. Truncating.",
+                    posts_limit,
+                    all_posts_metadata.len()
+                );
+                all_posts_metadata.truncate(posts_limit as usize);
+                break;
+            }
+
+            if current_page_num >= MAX_PAGES_TO_CRAWL {
+                tracing::warn!(
+                    "Reached maximum page limit ({}) for crawling. Stopping.",
+                    MAX_PAGES_TO_CRAWL
+                );
+                break;
+            }
+
+            current_page_num += 1;
+            tracing::trace!("Advanced to page {}", current_page_num);
+        }
+
+        tracing::debug!(
+            "Collected {} post metadata items in total. Fetching details...",
+            all_posts_metadata.len()
+        );
+
+        let mut futures_ordered = FuturesOrdered::new();
+        for metadata in all_posts_metadata {
+            futures_ordered.push_back(self.fetch_post_details(Box::new(metadata)));
+        }
+
+        let mut posts: Vec<SsufidPost> = Vec::new();
+        while let Some(result) = futures_ordered.next().await {
+            match result {
+                Ok(post) => {
+                    tracing::debug!("Successfully fetched details for post ID: {}", post.id);
+                    posts.push(post)
+                }
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to fetch or parse a post. Skipping.");
+                }
+            }
+        }
+
+        posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        tracing::info!("Crawl finished. Total posts fetched: {}", posts.len());
+        Ok(posts)
+    }
+}
+
 impl LawyerPlugin {
-    const LIST_PAGE_URL_BASE: &'static str = "http://lawyer.ssu.ac.kr/web/05/notice_list.do"; // Renamed for clarity
-    const VIEW_PAGE_URL_BASE: &'static str = "http://lawyer.ssu.ac.kr/web/05/notice_view.do";
-    const ATTACHMENT_BASE_URL: &'static str = "http://lawyer.ssu.ac.kr"; // Added for attachments
     const DATE_FORMAT_STR: &'static str = "[year]-[month]-[day]";
+
+    async fn request_page(&self, page_no: u32) -> Result<reqwest::Response, PluginError> {
+        let mut params = HashMap::new();
+        params.insert("stype".to_string(), "".to_string());
+        params.insert("stxt".to_string(), "".to_string());
+        params.insert("pdsid".to_string(), "".to_string());
+        params.insert("menuid".to_string(), "1003".to_string());
+        params.insert("pageno".to_string(), page_no.to_string());
+        tracing::debug!(page = page_no, "Fetching notice list page for metadata");
+        self.http_client
+            .post(Self::BASE_URL)
+            .form(&params)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Failed to send request for page {}", page_no);
+                PluginError::request::<Self>(e.to_string())
+            })
+    }
+
+    async fn request_post(&self, pdsid: String) -> Result<reqwest::Response, PluginError> {
+        tracing::debug!(post = &pdsid, "Fetching notice post");
+        let mut params = HashMap::new();
+        params.insert("stype".to_string(), "".to_string());
+        params.insert("stxt".to_string(), "".to_string());
+        params.insert("pdsid".to_string(), pdsid.clone());
+        params.insert("menuid".to_string(), "1003".to_string());
+        params.insert("pageno".to_string(), "1".to_string());
+        self.http_client
+            .post(Self::BASE_URL)
+            .form(&params)
+            .send()
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Failed to send request for post {}", pdsid);
+                PluginError::request::<Self>(e.to_string())
+            })
+    }
 
     async fn fetch_page_posts_metadata(
         &self,
         page_num: u32,
     ) -> Result<Vec<PostMetadata>, PluginError> {
-        let url_str = format!("{}?pageno={}", Self::LIST_PAGE_URL_BASE, page_num);
-        tracing::debug!(url = %url_str, page = page_num, "Fetching notice list page for metadata");
-
-        let response = self
-            .http_client
-            .get(&url_str)
-            .send()
-            .await
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
+        let response = self.request_page(page_num).await?;
 
         if !response.status().is_success() {
             tracing::error!(
-                "Failed to fetch list page {}: HTTP Status {}",
-                url_str,
+                "Failed to fetch list page: HTTP Status {}",
                 response.status()
             );
             return Err(PluginError::request::<Self>(format!(
@@ -119,7 +263,10 @@ impl LawyerPlugin {
                     .select(&self.selectors.post_title)
                     .next()
                     .ok_or_else(|| {
-                        PluginError::parse::<Self>(format!("Failed to find title for post ID {}", id))
+                        PluginError::parse::<Self>(format!(
+                            "Failed to find title for post ID {}",
+                            id
+                        ))
                     })?;
                 let title = title_element.text().collect::<String>().trim().to_string();
 
@@ -129,24 +276,16 @@ impl LawyerPlugin {
                     .map(|el| el.text().collect::<String>().trim().to_string())
                     .unwrap_or_default();
 
-                let detail_url_str = format!("{}?pdsid={}", Self::VIEW_PAGE_URL_BASE, id);
-                let url = Url::parse(&detail_url_str).map_err(|e| {
-                    PluginError::parse::<Self>(format!(
-                        "Failed to parse post URL {}: {}",
-                        detail_url_str, e
-                    ))
-                })?;
                 tracing::trace!(
-                    "Found post metadata on page {}: id={}, title='{}', date='{}'",
-                    page_num,
                     id,
                     title,
-                    date_str
+                    date_str,
+                    "Found post metadata on page {}",
+                    page_num,
                 );
 
                 Ok(PostMetadata {
                     id,
-                    url,
                     title,
                     date_str,
                 })
@@ -160,13 +299,8 @@ impl LawyerPlugin {
         &self,
         metadata: Box<PostMetadata>,
     ) -> Result<SsufidPost, PluginError> {
-        tracing::debug!(post_id = %metadata.id, post_url = %metadata.url, "Fetching post details");
-        let response = self
-            .http_client
-            .get(metadata.url.clone())
-            .send()
-            .await
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
+        tracing::debug!(post_id = %metadata.id, "Fetching post details");
+        let response = self.request_post(metadata.id.clone()).await?;
         let html_content = response
             .text()
             .await
@@ -179,7 +313,6 @@ impl LawyerPlugin {
             .map(|el| el.text().collect::<String>().trim().to_string())
             .unwrap_or_else(|| metadata.title.clone());
 
-        let author_from_detail = Some("국제법무학과".to_string());
         let mut date_str_from_detail = metadata.date_str.clone();
 
         if let Some(date_el_container) = document.select(&self.selectors.detail_date).next() {
@@ -212,7 +345,7 @@ impl LawyerPlugin {
             })?
             .midnight()
             .assume_utc()
-            .to_offset(time::macros::offset!(+9));
+            .to_offset(offset!(+9));
 
         let content_element = document.select(&self.selectors.detail_content).next();
         let content = content_element
@@ -222,175 +355,31 @@ impl LawyerPlugin {
             tracing::warn!(post_id = %metadata.id, "Parsed content is empty or whitespace only.");
         }
 
-        let attachment_base_url = Url::parse(Self::ATTACHMENT_BASE_URL)
-            .map_err(|e| PluginError::Configuration(format!("Invalid attachment base URL: {}", e)))?;
-
         let attachments = document
             .select(&self.selectors.detail_attachments)
-            .filter_map(|el| {
+            .map(|el| {
                 let name = el.text().collect::<String>().trim().to_string();
-                el.value().attr("href").and_then(|href_val| {
-                    let attachment_url_str = if href_val.starts_with("javascript:downpage(") {
-                        let params_part = href_val
-                            .trim_start_matches("javascript:downpage(")
-                            .trim_end_matches(")");
-                        let params: Vec<&str> = params_part
-                            .split(',')
-                            .map(|s| s.trim().trim_matches('\''))
-                            .collect();
-                        if params.len() == 3 {
-                            format!(
-                                "javascript_download:original_name={},server_file={},folder={}",
-                                params[0], params[1], params[2]
-                            )
-                        } else {
-                            tracing::warn!(post_id = %metadata.id, href = href_val, "Unexpected number of params in javascript:downpage");
-                            // Keep the original href_val as a fallback, or decide to skip
-                            // For now, let's skip if params are not as expected to avoid malformed URLs
-                            return None;
-                        }
-                    } else {
-                        match attachment_base_url.join(href_val.trim()) {
-                            Ok(full_url) => full_url.to_string(),
-                            Err(e) => {
-                                tracing::warn!(post_id = %metadata.id, href = href_val, error = %e, "Failed to join attachment URL with base");
-                                // Fallback to an invalid URL or skip
-                                return None; // Skip this attachment
-                            }
-                        }
-                    };
-                    Some(Attachment {
-                        name: Some(name),
-                        url: attachment_url_str,
-                        mime_type: None,
-                    })
-                })
+                Attachment {
+                    name: Some(name),
+                    url: Self::BASE_URL.to_string(), // NOTE: No valid URL for individual attachments; every request is a POST
+                    mime_type: None,                 // Content type is not provided in the HTML
+                }
             })
             .collect();
 
         Ok(SsufidPost {
             id: metadata.id.clone(),
-            url: metadata.url.to_string(),
+            url: Self::BASE_URL.to_string(), // NOTE: No valid URL for individual posts; every request is a POST
             title,
-            author: author_from_detail,
+            author: None,
             description: None,
-            category: vec!["공지사항".to_string()],
+            category: vec![],
             created_at,
             updated_at: None,
             thumbnail: None,
             content,
             attachments,
             metadata: None,
-        })
-    }
-}
-
-impl SsufidPlugin for LawyerPlugin {
-    const IDENTIFIER: &'static str = "lawyer.ssu.ac.kr";
-    const TITLE: &'static str = "숭실대학교 법과대학";
-    const DESCRIPTION: &'static str = "숭실대학교 법과대학 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://lawyer.ssu.ac.kr/web/05/notice_list.do";
-
-    // Applied clippy's suggestion for needless_lifetimes (removed 'a)
-    fn crawl(
-        &self,
-        posts_limit: u32,
-    ) -> impl futures::Future<
-        Output = std::result::Result<
-            std::vec::Vec<ssufid::core::SsufidPost>,
-            ssufid::error::PluginError,
-        >,
-    > + std::marker::Send {
-        Box::pin(async move {
-            let mut all_posts_metadata: Vec<PostMetadata> = Vec::new();
-            let mut current_page_num = 1;
-            const MAX_PAGES_TO_CRAWL: u32 = 500; // Safety break
-
-            tracing::debug!(
-                "Starting crawl for plugin: {}, posts_limit: {}",
-                Self::IDENTIFIER,
-                posts_limit
-            );
-
-            loop {
-                tracing::debug!(
-                    "Attempting to fetch metadata from page {}",
-                    current_page_num
-                );
-                let metadata_on_page = match self.fetch_page_posts_metadata(current_page_num).await {
-                    Ok(metadata) => metadata,
-                    Err(e) => {
-                        // If a page fetch fails, decide if it's critical or skippable
-                        // For now, let's assume it's critical for a specific page,
-                        // but if it's a request error for a non-first page, maybe log and break.
-                        if current_page_num == 1 {
-                            tracing::error!("Failed to fetch metadata from first page: {:?}", e);
-                            return Err(e);
-                        } else {
-                            tracing::warn!("Failed to fetch metadata from page {}: {:?}. Assuming end of posts.", current_page_num, e);
-                            break; // Stop if a subsequent page fails
-                        }
-                    }
-                };
-
-                if metadata_on_page.is_empty() {
-                    tracing::debug!(
-                        "No more posts found on page {}. Assuming it's the last page or page is empty.",
-                        current_page_num
-                    );
-                    break;
-                }
-
-                all_posts_metadata.extend(metadata_on_page);
-
-                if posts_limit > 0 && all_posts_metadata.len() >= posts_limit as usize {
-                    tracing::debug!(
-                        "Reached or exceeded posts_limit ({}) with {} posts. Truncating.",
-                        posts_limit,
-                        all_posts_metadata.len()
-                    );
-                    all_posts_metadata.truncate(posts_limit as usize);
-                    break;
-                }
-
-                if current_page_num >= MAX_PAGES_TO_CRAWL {
-                    tracing::warn!(
-                        "Reached maximum page limit ({}) for crawling. Stopping.",
-                        MAX_PAGES_TO_CRAWL
-                    );
-                    break;
-                }
-
-                current_page_num += 1;
-                tracing::trace!("Advanced to page {}", current_page_num);
-            }
-
-            tracing::debug!(
-                "Collected {} post metadata items in total. Fetching details...",
-                all_posts_metadata.len()
-            );
-
-            let mut futures_ordered = FuturesOrdered::new();
-            for metadata in all_posts_metadata {
-                futures_ordered.push_back(self.fetch_post_details(Box::new(metadata)));
-            }
-
-            let mut posts: Vec<SsufidPost> = Vec::new();
-            while let Some(result) = futures_ordered.next().await {
-                match result {
-                    Ok(post) => {
-                        tracing::trace!("Successfully fetched details for post ID: {}", post.id);
-                        posts.push(post)
-                    }
-                    Err(e) => {
-                        tracing::error!(error = %e, "Failed to fetch or parse a post. Skipping.");
-                    }
-                }
-            }
-
-            posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-            tracing::info!("Crawl finished. Total posts fetched: {}", posts.len());
-            Ok(posts)
         })
     }
 }

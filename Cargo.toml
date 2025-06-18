@@ -44,7 +44,6 @@ ssufid_ssupath = { path = "plugins/ssupath" }
 ssufid_lifelongedu = { path = "plugins/lifelongedu" }
 ssufid_chemeng = { path = "plugins/chemeng" }
 ssufid_ee = { path = "plugins/ee" }
-ssufid_me = { path = "plugins/me" }
 ssufid_oasis = { path = "plugins/oasis" }
 ssufid_startup = { path = "plugins/startup" }
 ssufid_lawyer = { path = "plugins/lawyer" }
