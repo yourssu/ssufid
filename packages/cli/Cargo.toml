@@ -29,6 +29,7 @@ ssufid_inso = { workspace = true }
 ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
+ssufid_ssudorm = { workspace = true }
 ssufid_ssupath = { workspace = true }
 ssufid_lifelongedu = { workspace = true }
 ssufid_chemeng = { workspace = true }

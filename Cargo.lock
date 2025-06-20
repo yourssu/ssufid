@@ -2082,6 +2082,7 @@ dependencies = [
  "ssufid_oasis",
  "ssufid_ssfilm",
  "ssufid_ssucatch",
+ "ssufid_ssudorm",
  "ssufid_ssupath",
  "ssufid_startup",
  "ssufid_study",
@@ -2268,6 +2269,25 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_ssudorm"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
  "url",
 ]
 
