@@ -9,6 +9,7 @@ use ssufid_ee::EePlugin;
 use ssufid_inso::InsoPlugin;
 use ssufid_lawyer::LawyerPlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
+use ssufid_materials::MaterialsPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_oasis::OasisPlugin;
@@ -123,6 +124,7 @@ register_plugins! {
     Law(LawPlugin) => LawPlugin::new(),
     Lawyer(LawyerPlugin) => LawyerPlugin::new(),
     LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
+    Materials(MaterialsPlugin) => MaterialsPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
     Media(MediaPlugin) => MediaPlugin,

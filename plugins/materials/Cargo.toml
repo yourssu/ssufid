@@ -1,0 +1,37 @@
+[package]
+name = "ssufid_materials"
+version = "0.1.0"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+ssufid = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+reqwest = { workspace = true, features = [
+  "charset",
+  "http2",
+  "macos-system-configuration", # Keep if other plugins use it, otherwise optional
+  "rustls-tls",                 # Or "native-tls" if that's the workspace default
+  "cookies",
+  "gzip",
+  "brotli",
+] }
+scraper = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+time = { workspace = true, features = [
+  "serde",
+  "macros",
+  "formatting",
+  "parsing",
+] }
+url = { workspace = true }
+thiserror = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
+
+# Add any other common dependencies found in other plugins if necessary
+
+[dev-dependencies]
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

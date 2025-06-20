@@ -42,6 +42,7 @@ ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
 ssufid_ssudorm = { path = "plugins/ssudorm" }
 ssufid_ssupath = { path = "plugins/ssupath" }
+ssufid_materials = { path = "plugins/materials" }
 ssufid_lifelongedu = { path = "plugins/lifelongedu" }
 ssufid_chemeng = { path = "plugins/chemeng" }
 ssufid_ee = { path = "plugins/ee" }
