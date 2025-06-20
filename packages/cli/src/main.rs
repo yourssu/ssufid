@@ -6,6 +6,7 @@ use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
+use ssufid_lawyer::LawyerPlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
@@ -116,6 +117,7 @@ register_plugins! {
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
+    Lawyer(LawyerPlugin) => LawyerPlugin::new(),
     LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
     Math(MathPlugin) => MathPlugin::new(),
