@@ -2074,6 +2074,7 @@ dependencies = [
  "ssufid_chemeng",
  "ssufid_common",
  "ssufid_ee",
+ "ssufid_inso",
  "ssufid_lawyer",
  "ssufid_lifelongedu",
  "ssufid_media",
@@ -2119,6 +2120,22 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_inso"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
  "url",
 ]
 
