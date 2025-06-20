@@ -25,6 +25,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "json"] }
 
 ssufid = { workspace = true }
 ssufid_common = { workspace = true }
+ssufid_inso = { workspace = true }
 ssufid_media = { workspace = true }
 ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
@@ -35,6 +36,9 @@ ssufid_chemeng = { workspace = true }
 ssufid_ee = { workspace = true }
 ssufid_oasis = { workspace = true }
 ssufid_startup = { workspace = true }
+ssufid_ssfilm = { workspace = true }
+ssufid_study = { workspace = true }
+ssufid_lawyer = { workspace = true }
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }
