@@ -6,14 +6,19 @@ use ssufid::core::{SsufidCore, SsufidPlugin};
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
+use ssufid_inso::InsoPlugin;
+use ssufid_lawyer::LawyerPlugin;
 use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_materials::MaterialsPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_oasis::OasisPlugin;
+use ssufid_ssfilm::SsfilmPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
+use ssufid_ssudorm::SsuDormPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use ssufid_startup::StartupPlugin;
+use ssufid_study::StudyPlugin;
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{Layer, filter, layer::SubscriberExt as _, util::SubscriberInitExt};
@@ -112,10 +117,12 @@ register_plugins! {
     Gtrade(GtradePlugin) => GtradePlugin::new(),
     History(HistoryPlugin) => HistoryPlugin::new(),
     Iise(IisePlugin) => IisePlugin::new(),
+    Inso(InsoPlugin) => InsoPlugin::new(),
     Itrans(ItransPlugin) => ItransPlugin::new(),
     Japanstu(JapanstuPlugin) => JapanstuPlugin::new(),
     Korlan(KorlanPlugin) => KorlanPlugin::new(),
     Law(LawPlugin) => LawPlugin::new(),
+    Lawyer(LawyerPlugin) => LawyerPlugin::new(),
     LifelongEdu(LifelongEduPlugin) => LifelongEduPlugin::new(),
     Materials(MaterialsPlugin) => MaterialsPlugin::new(),
     Masscom(MasscomPlugin) => MasscomPlugin::new(),
@@ -131,12 +138,15 @@ register_plugins! {
     Sec(SecPlugin) => SecPlugin::new(),
     Sls(SlsPlugin) => SlsPlugin::new(),
     Soar(SoarPlugin) => SoarPlugin::new(),
+    Ssfilm(SsfilmPlugin) => SsfilmPlugin,
     SsuCatch(SsuCatchPlugin) => SsuCatchPlugin::new(),
+    SsuDorm(SsuDormPlugin) => SsuDormPlugin::new(),
     SsuPath(SsuPathPlugin) => SsuPathPlugin::new(SsuPathCredential::Password(
         std::env::var("SSU_ID").unwrap_or_default(),
         std::env::var("SSU_PASSWORD").unwrap_or_default()
     )),
     Startup(StartupPlugin) => StartupPlugin,
+    Study(StudyPlugin) => StudyPlugin,
     Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),

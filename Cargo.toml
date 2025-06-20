@@ -1,5 +1,5 @@
 [workspace]
-resolver = "3"
+resolver = "2"
 members = ["packages/*", "plugins/*"]
 
 [workspace.package]
@@ -40,11 +40,15 @@ ssufid_common = { path = "plugins/common" }
 ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
 ssufid_ssucatch = { path = "plugins/ssucatch" }
+ssufid_ssudorm = { path = "plugins/ssudorm" }
 ssufid_ssupath = { path = "plugins/ssupath" }
 ssufid_materials = { path = "plugins/materials" }
 ssufid_lifelongedu = { path = "plugins/lifelongedu" }
 ssufid_chemeng = { path = "plugins/chemeng" }
 ssufid_ee = { path = "plugins/ee" }
-ssufid_me = { path = "plugins/me" }
 ssufid_oasis = { path = "plugins/oasis" }
 ssufid_startup = { path = "plugins/startup" }
+ssufid_inso = { path = "plugins/inso" }
+ssufid_ssfilm = { path = "plugins/ssfilm" }
+ssufid_study = { path = "plugins/study" }
+ssufid_lawyer = { path = "plugins/lawyer" }
