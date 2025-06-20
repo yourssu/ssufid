@@ -34,6 +34,7 @@ ssufid_chemeng = { workspace = true }
 ssufid_ee = { workspace = true }
 ssufid_oasis = { workspace = true }
 ssufid_startup = { workspace = true }
+ssufid_ssfilm = { workspace = true }
 ssufid_study = { workspace = true }
 ssufid_lawyer = { workspace = true }
 
