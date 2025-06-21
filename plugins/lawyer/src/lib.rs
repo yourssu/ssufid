@@ -182,6 +182,7 @@ impl SsufidPlugin for LawyerPlugin {
 }
 
 impl LawyerPlugin {
+    const POST_VIEW_URL: &'static str = "http://lawyer.ssu.ac.kr/web/05/notice_view.do";
     const DATE_FORMAT_STR: &'static str = "[year]-[month]-[day]";
 
     async fn request_page(&self, page_no: u32) -> Result<reqwest::Response, PluginError> {
@@ -212,7 +213,7 @@ impl LawyerPlugin {
         params.insert("menuid".to_string(), "1003".to_string());
         params.insert("pageno".to_string(), "1".to_string());
         self.http_client
-            .post(Self::BASE_URL)
+            .post(Self::POST_VIEW_URL)
             .form(&params)
             .send()
             .await
@@ -344,13 +345,15 @@ impl LawyerPlugin {
                 ))
             })?
             .midnight()
-            .assume_utc()
-            .to_offset(offset!(+9));
+            .assume_offset(offset!(+9));
 
         let content_element = document.select(&self.selectors.detail_content).next();
         let content = content_element
-            .map(|el| el.inner_html())
-            .unwrap_or_default();
+            .ok_or(PluginError::parse::<Self>(format!(
+                "Failed to find content element for post ID {} - {}",
+                metadata.id, metadata.title
+            )))?
+            .inner_html();
         if content.trim().is_empty() && content_element.is_some() {
             tracing::warn!(post_id = %metadata.id, "Parsed content is empty or whitespace only.");
         }

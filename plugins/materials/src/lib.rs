@@ -415,15 +415,17 @@ mod tests {
         init_tracing();
         let plugin = MaterialsPlugin::new();
 
-        tracing::info!(target: MaterialsPlugin::IDENTIFIER, "Testing fetch_page_post_metadata_helper with BASE_URL: {}", MaterialsPlugin::BASE_URL);
+        tracing::info!(
+            "Testing fetch_page_post_metadata_helper with BASE_URL: {}",
+            MaterialsPlugin::BASE_URL
+        );
 
-        let result = plugin.fetch_post_metadata(MaterialsPlugin::BASE_URL).await;
+        let result = plugin.fetch_post_metadata(1).await;
 
         if let Err(e) = &result {
-            error!(target: MaterialsPlugin::IDENTIFIER, "fetch_page_post_metadata_helper failed: {:?}", e);
+            error!("fetch_page_post_metadata_helper failed: {:?}", e);
         }
-        let (metadata, next_page_url_opt) =
-            result.expect("Fetching metadata from first page should succeed");
+        let metadata = result.expect("Fetching metadata from first page should succeed");
 
         if metadata.is_empty() {
             let debug_client = reqwest::Client::new();
@@ -435,10 +437,9 @@ mod tests {
                 .text()
                 .await
                 .unwrap();
-            warn!(target: MaterialsPlugin::IDENTIFIER,
+            warn!(
                 "No metadata collected from the first page. This might be due to website changes or incorrect selectors. \
-                Current list_item_selector: '{}'. Page HTML for debug:\n{}",
-                plugin.selectors.list_item_selector_str,
+                Page HTML for debug:\n{}",
                 page_html_for_debug
             );
         }
@@ -468,23 +469,7 @@ mod tests {
             );
             // assert!(!item.date_str.is_empty(), "Post date string should not be empty: {:?}", item); // date_str removed from PostMetadata
         }
-
-        if let Some(url) = &next_page_url_opt {
-            info!(target: MaterialsPlugin::IDENTIFIER, "Next page URL from metadata helper: {}", url);
-            assert!(
-                url.starts_with(BASE_URL_HOST_ONLY),
-                "Next page URL ('{}') should be absolute if present.",
-                url
-            );
-            assert!(
-                url.contains("page="),
-                "Next page URL ('{}') should typically contain 'page='.",
-                url
-            );
-        } else {
-            info!(target: MaterialsPlugin::IDENTIFIER, "No next page URL found from the first page, this might be normal if there's only one page of results.");
-        }
-        info!(target: MaterialsPlugin::IDENTIFIER, "First page metadata count: {}. Next page URL: {:?}", metadata.len(), next_page_url_opt);
+        info!("First page metadata count: {}.", metadata.len());
     }
 
     #[tokio::test]
@@ -492,13 +477,13 @@ mod tests {
         init_tracing();
         let plugin = MaterialsPlugin::new();
 
-        let metadata_items_result = plugin.fetch_post_metadata(MaterialsPlugin::BASE_URL).await;
+        let metadata_items_result = plugin.fetch_post_metadata(1).await;
         assert!(
             metadata_items_result.is_ok(),
             "Fetching metadata for single post detail test failed: {:?}",
             metadata_items_result.err()
         );
-        let metadata_items = metadata_items_result.unwrap().0;
+        let metadata_items = metadata_items_result.unwrap();
 
         assert!(
             !metadata_items.is_empty(),
@@ -506,7 +491,10 @@ mod tests {
         );
 
         let test_meta = metadata_items[0].clone();
-        info!(target: MaterialsPlugin::IDENTIFIER, "Testing full detail fetch for: ID={}, URL={}", test_meta.id, test_meta.url);
+        info!(
+            "Testing full detail fetch for: ID={}, URL={}",
+            test_meta.id, test_meta.url
+        );
 
         match plugin.post_details(test_meta.clone(), &plugin.client).await {
             Ok(full_data) => {
@@ -516,10 +504,11 @@ mod tests {
                     !full_data.title.is_empty(),
                     "Full post title should not be empty"
                 );
-                info!(target: MaterialsPlugin::IDENTIFIER, "Fetched Full Data: Title='{}', Author='{:?}', ContentNotEmpty={}", full_data.title, full_data.author, !full_data.content.is_empty());
-                if full_data.author.is_none() {
-                    warn!(target: MaterialsPlugin::IDENTIFIER, "Author was None for post ID {}", full_data.id);
-                }
+                info!(
+                    "Fetched Full Data: Title='{}', ContentNotEmpty={}",
+                    full_data.title,
+                    !full_data.content.is_empty()
+                );
                 assert!(
                     full_data.created_at.year() > 2000,
                     "Parsed year seems too old, check date parsing. Year: {}",

@@ -376,7 +376,7 @@ mod tests {
             first_metadata
         );
 
-        let post = plugin.fetch_post_data(first_metadata).await;
+        let post = plugin.fetch_post_data(first_metadata.clone()).await;
         match &post {
             Ok(p) => tracing::info!(
                 "Fetched post: ID={}, Title='{}', Author='{:?}', Date='{}', Content exists: {}",
