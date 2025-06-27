@@ -36,6 +36,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 ssufid = { path = "packages/ssufid", features = ["rss"] }
 
+ssufid_biz = { path = "plugins/biz" }
 ssufid_common = { path = "plugins/common" }
 ssufid_media = { path = "plugins/media" }
 ssufid_mediamba = { path = "plugins/mediamba" }
