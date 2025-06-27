@@ -11,13 +11,13 @@ fn full_url(base: &str, path: &str) -> Result<String, PluginError> {
     let base_url = Url::parse(base).map_err(|e| {
         PluginError::custom::<EePlugin>(
             "UrlParse".to_string(),
-            format!("Base URL parse error: {}", e),
+            format!("Base URL parse error: {e}"),
         )
     })?;
     base_url
         .join(path)
         .map_err(|e| {
-            PluginError::custom::<EePlugin>("UrlJoin".to_string(), format!("URL join error: {}", e))
+            PluginError::custom::<EePlugin>("UrlJoin".to_string(), format!("URL join error: {e}"))
         })
         .map(|u| u.to_string())
 }
@@ -37,21 +37,21 @@ impl Selectors {
     fn new() -> Result<Self, PluginError> {
         Ok(Selectors {
             post_item: Selector::parse("div.board-list2 > ul > li")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_item selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_item selector: {e}")))?,
             post_link: Selector::parse("div.subject > a")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_link selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_link selector: {e}")))?,
             post_title_view: Selector::parse("div.board-view > div.head > h3.tit")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_title_view selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_title_view selector: {e}")))?,
             post_author_view: Selector::parse("div.board-view > div.head > div.info > span.name strong")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_author_view selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_author_view selector: {e}")))?,
             post_date_view: Selector::parse("div.board-view > div.head > div.info > span.date")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_date_view selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_date_view selector: {e}")))?,
             post_content_view: Selector::parse("div.board-view > div.body")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_content_view selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse post_content_view selector: {e}")))?,
             attachment_link: Selector::parse("div.board-view > div.head > div.files a[onclick*='download'], div.board-view > div.body a[href^='/uploaded/']")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse attachment_link selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse attachment_link selector: {e}")))?,
             next_page_link: Selector::parse("div.paginate > a.next:not(.disabled)")
-                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse next_page_link selector: {}", e)))?,
+                .map_err(|e| PluginError::custom::<EePlugin>("SelectorParse".to_string(), format!("Failed to parse next_page_link selector: {e}")))?,
         })
     }
 }
@@ -85,14 +85,13 @@ impl EePlugin {
             .send()
             .await
             .map_err(|e| {
-                PluginError::request::<Self>(format!("Failed to send request to {}: {}", url, e))
+                PluginError::request::<Self>(format!("Failed to send request to {url}: {e}"))
             })?
             .text()
             .await
             .map_err(|e| {
                 PluginError::request::<Self>(format!(
-                    "Failed to get text from response {}: {}",
-                    url, e
+                    "Failed to get text from response {url}: {e}"
                 ))
             })
     }
@@ -108,8 +107,7 @@ impl EePlugin {
             Ok(d.with_time(Time::MIDNIGHT).assume_offset(Self::KST_OFFSET))
         } else {
             Err(PluginError::parse::<Self>(format!(
-                "Failed to parse date string: {}",
-                date_str
+                "Failed to parse date string: {date_str}"
             )))
         }
     }
@@ -133,8 +131,7 @@ impl EePlugin {
     fn extract_idx_from_url(url_str: &str) -> Result<String, PluginError> {
         let parsed_url = Url::parse(url_str).map_err(|e| {
             PluginError::parse::<EePlugin>(format!(
-                "Failed to parse URL for idx extraction {}: {}",
-                url_str, e
+                "Failed to parse URL for idx extraction {url_str}: {e}"
             ))
         })?;
         parsed_url
@@ -147,7 +144,7 @@ impl EePlugin {
                 }
             })
             .ok_or_else(|| {
-                PluginError::parse::<EePlugin>(format!("Could not find 'idx' in URL: {}", url_str))
+                PluginError::parse::<EePlugin>(format!("Could not find 'idx' in URL: {url_str}"))
             })
     }
 }
@@ -299,7 +296,7 @@ impl SsufidPlugin for EePlugin {
                 for (att_name_str, att_url) in attachments_data {
                     final_attachments.push(Attachment {
                         name: if att_name_str.is_empty() {
-                            Some(format!("Attachment for post {}", post_id))
+                            Some(format!("Attachment for post {post_id}"))
                         } else {
                             Some(att_name_str)
                         },
@@ -399,8 +396,7 @@ mod tests {
             println!("URL: {}", post.url);
             assert!(
                 !post.id.is_empty(),
-                "Post ID is empty for post at index {}",
-                i
+                "Post ID is empty for post at index {i}"
             );
             assert!(
                 post.url.starts_with(
@@ -412,13 +408,11 @@ mod tests {
             );
             assert!(
                 !post.title.is_empty(),
-                "Post title is empty for post at index {}",
-                i
+                "Post title is empty for post at index {i}"
             );
             assert!(
                 post.author.is_some(),
-                "Post author is None for post at index {}",
-                i
+                "Post author is None for post at index {i}"
             );
             assert!(
                 post.created_at.year() >= 2022,
@@ -428,8 +422,7 @@ mod tests {
             );
             assert!(
                 !post.content.is_empty(),
-                "Post content is empty for post at index {}",
-                i
+                "Post content is empty for post at index {i}"
             );
         }
     }

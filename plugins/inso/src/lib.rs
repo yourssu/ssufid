@@ -111,7 +111,7 @@ impl InsoPlugin {
                     )
                 })?;
 
-                let absolute_post_url = format!("http://inso.ssu.ac.kr{}", relative_url);
+                let absolute_post_url = format!("http://inso.ssu.ac.kr{relative_url}");
 
                 let parsed_url = Url::parse(&absolute_post_url)
                     .map_err(|e| InsoPluginError::UrlParseError(e.to_string()))
@@ -128,8 +128,7 @@ impl InsoPlugin {
                     })
                     .ok_or_else(|| {
                         PluginError::parse::<Self>(format!(
-                            "Could not find 'idx' in post URL: {}",
-                            absolute_post_url
+                            "Could not find 'idx' in post URL: {absolute_post_url}"
                         ))
                     })?;
 
@@ -189,13 +188,13 @@ impl InsoPlugin {
         }
 
         let title = extract_str(metadata.next())
-            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract title: {}", e)))?;
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract title: {e}")))?;
 
         let author = extract_str(metadata.next())
-            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract author: {}", e)))?;
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract author: {e}")))?;
 
         let date_str = extract_str(metadata.next())
-            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract date: {}", e)))?;
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract date: {e}")))?;
 
         let date = Date::parse(&date_str, DATE_FORMAT)
             .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse date: {e:?}")))?
@@ -203,7 +202,7 @@ impl InsoPlugin {
             .assume_offset(offset!(+09:00));
 
         let category = extract_str(metadata.nth(1)).map_err(|e| {
-            PluginError::parse::<Self>(format!("Failed to extract category: {}", e))
+            PluginError::parse::<Self>(format!("Failed to extract category: {e}"))
         })?;
 
         let mut attachments = Vec::new();

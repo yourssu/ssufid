@@ -264,10 +264,7 @@ impl LawyerPlugin {
                     .select(&self.selectors.post_title)
                     .next()
                     .ok_or_else(|| {
-                        PluginError::parse::<Self>(format!(
-                            "Failed to find title for post ID {}",
-                            id
-                        ))
+                        PluginError::parse::<Self>(format!("Failed to find title for post ID {id}"))
                     })?;
                 let title = title_element.text().collect::<String>().trim().to_string();
 
@@ -405,7 +402,6 @@ mod tests {
     async fn test_selectors_initialization() {
         setup_tracing_for_tests();
         let _selectors = Selectors::new();
-        assert!(true, "Selectors::new() should complete without panic.");
         tracing::info!("Selectors initialized successfully (test_selectors_initialization).");
     }
 
@@ -426,8 +422,7 @@ mod tests {
         if posts_limit > 0 {
             assert!(
                 !posts.is_empty(),
-                "Expected to fetch at least one post with limit {}",
-                posts_limit
+                "Expected to fetch at least one post with limit {posts_limit}"
             );
         }
         tracing::info!("Fetched {} posts.", posts.len());

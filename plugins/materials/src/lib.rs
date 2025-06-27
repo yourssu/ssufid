@@ -231,8 +231,7 @@ impl MaterialsPlugin {
                     .join(relative_url_str)
                     .map_err(|e| {
                         PluginError::parse::<MaterialsPlugin>(format!(
-                            "Failed to join post URL '{}' with base '{}': {}",
-                            relative_url_str, BASE_URL_HOST_ONLY, e
+                            "Failed to join post URL '{relative_url_str}' with base '{BASE_URL_HOST_ONLY}': {e}"
                         ))
                     })?;
 
@@ -242,8 +241,7 @@ impl MaterialsPlugin {
                     .map(|(_, value)| value.into_owned())
                     .ok_or_else(|| {
                         PluginError::parse::<MaterialsPlugin>(format!(
-                            "Could not extract post ID ('num') from URL: {}",
-                            absolute_url
+                            "Could not extract post ID ('num') from URL: {absolute_url}"
                         ))
                     })?;
 
@@ -346,7 +344,7 @@ impl MaterialsPlugin {
                     ))
                 })?;
 
-                let url = format!("{}{}", BASE_URL_HOST_ONLY, rel_url);
+                let url = format!("{BASE_URL_HOST_ONLY}{rel_url}");
 
                 let name = e.text().collect::<String>().trim().to_string();
 
@@ -405,7 +403,7 @@ mod tests {
                 }
             }
             Err(e) => {
-                panic!("Crawl failed: {:?}", e);
+                panic!("Crawl failed: {e:?}");
             }
         }
     }
@@ -452,8 +450,7 @@ mod tests {
         for item in &metadata {
             assert!(
                 !item.id.is_empty(),
-                "Post ID should not be empty: {:?}",
-                item
+                "Post ID should not be empty: {item:?}"
             );
             assert!(
                 item.url.starts_with(BASE_URL_HOST_ONLY),
@@ -464,8 +461,7 @@ mod tests {
             );
             assert!(
                 !item.title.is_empty(),
-                "Post title should not be empty: {:?}",
-                item
+                "Post title should not be empty: {item:?}"
             );
             // assert!(!item.date_str.is_empty(), "Post date string should not be empty: {:?}", item); // date_str removed from PostMetadata
         }

@@ -74,7 +74,7 @@ impl InfocomPlugin {
     ) -> Result<Vec<InfocomPostMetadata>, PluginError> {
         let page_url = format!("{}?pNo={}&code=notice", Self::BASE_URL, page);
         let response = client.get(&page_url).send().await.map_err(|e| {
-            PluginError::request::<Self>(format!("Failed to fetch page {}: {}", page_url, e))
+            PluginError::request::<Self>(format!("Failed to fetch page {page_url}: {e}"))
         })?;
 
         if !response.status().is_success() {
@@ -86,12 +86,12 @@ impl InfocomPlugin {
         }
 
         let html_content = response.text().await.map_err(|e| {
-            PluginError::parse::<Self>(format!("Failed to read page {}: {}", page_url, e))
+            PluginError::parse::<Self>(format!("Failed to read page {page_url}: {e}"))
         })?;
 
         let document = Html::parse_document(&html_content);
         let host_url_parsed = Url::parse(Self::HOST_URL)
-            .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse HOST_URL: {}", e)))?;
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse HOST_URL: {e}")))?;
 
         let posts_metadata = document
             .select(&self.selectors.post_container)

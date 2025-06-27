@@ -207,11 +207,10 @@ where
             format_description!("[year]-[month]-[day] [hour]:[minute]");
 
         let created_at =
-            time::PrimitiveDateTime::parse(&format!("20{}", created_at_str), DATE_FORMAT)
+            time::PrimitiveDateTime::parse(&format!("20{created_at_str}"), DATE_FORMAT)
                 .map_err(|_| {
                     PluginError::parse::<T>(format!(
-                        "Failed to parse created date: {}",
-                        created_at_str
+                        "Failed to parse created date: {created_at_str}"
                     ))
                 })?
                 .assume_offset(offset!(+9));

@@ -19,8 +19,7 @@ impl OasisPlugin {
         posts_limit: u32,
     ) -> Result<Vec<OasisPostMeta>, PluginError> {
         let res = reqwest::get(format!(
-            "{}/1/bulletin-boards/1/bulletins?nameOption=part&isSeq=false&onlyWriter=false&max={}",
-            base_url, posts_limit
+            "{base_url}/1/bulletin-boards/1/bulletins?nameOption=part&isSeq=false&onlyWriter=false&max={posts_limit}"
         ))
         .await
         .map_err(|e| PluginError::request::<Self>(e.to_string()))?
