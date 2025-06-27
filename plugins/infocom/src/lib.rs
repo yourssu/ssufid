@@ -4,7 +4,11 @@ use ssufid::{
     core::{Attachment, SsufidPlugin, SsufidPost},
     error::PluginError,
 };
-use time::{Date, macros::offset};
+use time::{
+    Date, OffsetDateTime,
+    format_description::BorrowedFormatItem,
+    macros::{format_description, offset},
+};
 use url::Url;
 
 #[derive(Debug, Clone)] // Added Clone
@@ -12,7 +16,7 @@ struct InfocomPostMetadata {
     id: String,
     url: String,
     title: String,
-    date_str: String, // To be parsed later into OffsetDateTime
+    date: OffsetDateTime,
 }
 
 // Selectors struct (defined earlier)
@@ -21,8 +25,7 @@ struct Selectors {
     title: Selector,
     date: Selector,
     post_content_container: Selector,
-    post_links: Selector,
-    post_images: Selector,
+    post_files: Selector,
 }
 
 impl Selectors {
@@ -32,8 +35,7 @@ impl Selectors {
             title: Selector::parse("div.subject span").unwrap(),
             date: Selector::parse("ul.info li.date").unwrap(),
             post_content_container: Selector::parse("div.view_box div.con").unwrap(),
-            post_links: Selector::parse("div.view_box div.con a[href]").unwrap(),
-            post_images: Selector::parse("div.view_box div.con img[src]").unwrap(),
+            post_files: Selector::parse("div.view_box div.file a").unwrap(),
         }
     }
 }
@@ -56,6 +58,9 @@ impl Default for InfocomPlugin {
 }
 
 impl InfocomPlugin {
+    const HOST_URL: &'static str = "http://infocom.ssu.ac.kr";
+    const DATE_FORMAT: &[BorrowedFormatItem<'_>] = format_description!("[year]. [month]. [day]");
+
     pub fn new() -> Self {
         InfocomPlugin {
             selectors: Selectors::new(),
@@ -67,7 +72,7 @@ impl InfocomPlugin {
         page: u32,
         client: &reqwest::Client,
     ) -> Result<Vec<InfocomPostMetadata>, PluginError> {
-        let page_url = format!("{}?page={}", Self::BASE_URL, page);
+        let page_url = format!("{}?pNo={}&code=notice", Self::BASE_URL, page);
         let response = client.get(&page_url).send().await.map_err(|e| {
             PluginError::request::<Self>(format!("Failed to fetch page {}: {}", page_url, e))
         })?;
@@ -85,14 +90,14 @@ impl InfocomPlugin {
         })?;
 
         let document = Html::parse_document(&html_content);
-        let base_url_parsed = Url::parse(Self::BASE_URL)
-            .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse BASE_URL: {}", e)))?;
+        let host_url_parsed = Url::parse(Self::HOST_URL)
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to parse HOST_URL: {}", e)))?;
 
         let posts_metadata = document
             .select(&self.selectors.post_container)
             .filter_map(|element| {
                 let relative_url = element.value().attr("href")?;
-                let post_url_obj = base_url_parsed.join(relative_url).ok()?;
+                let post_url_obj = host_url_parsed.join(relative_url).ok()?;
                 let post_url = post_url_obj.to_string();
 
                 let id = post_url_obj.query_pairs().find_map(|(key, value)| {
@@ -119,11 +124,16 @@ impl InfocomPlugin {
                     .trim()
                     .to_string();
 
+                let date = Date::parse(&date_str, Self::DATE_FORMAT)
+                    .ok()?
+                    .midnight()
+                    .assume_offset(offset!(+09:00));
+
                 Some(InfocomPostMetadata {
                     id,
                     url: post_url,
                     title,
-                    date_str,
+                    date,
                 })
             })
             .collect::<Vec<_>>();
@@ -166,10 +176,10 @@ impl InfocomPlugin {
             .next()
             .map_or(String::new(), |element| element.inner_html());
 
-        for link_element in document.select(&self.selectors.post_links) {
-            if let Some(href) = link_element.value().attr("href") {
-                let name = link_element.text().collect::<String>().trim().to_string();
-                let attachment_url = Url::parse(Self::BASE_URL)
+        for file_element in document.select(&self.selectors.post_files) {
+            if let Some(href) = file_element.value().attr("href") {
+                let name = file_element.text().collect::<String>().trim().to_string();
+                let attachment_url = Url::parse(&post_metadata.url)
                     .unwrap()
                     .join(href)
                     .map(|u| u.to_string())
@@ -178,23 +188,6 @@ impl InfocomPlugin {
                 attachments.push(Attachment {
                     name: if name.is_empty() { None } else { Some(name) },
                     url: attachment_url,
-                    mime_type: None,
-                });
-            }
-        }
-
-        for img_element in document.select(&self.selectors.post_images) {
-            if let Some(src) = img_element.value().attr("src") {
-                let name = img_element.value().attr("alt").map(str::to_string);
-                let image_url = Url::parse(Self::BASE_URL)
-                    .unwrap()
-                    .join(src)
-                    .map(|u| u.to_string())
-                    .unwrap_or_else(|_| src.to_string());
-
-                attachments.push(Attachment {
-                    name,
-                    url: image_url,
                     mime_type: None,
                 });
             }
@@ -209,8 +202,8 @@ impl InfocomPlugin {
 
 impl SsufidPlugin for InfocomPlugin {
     const IDENTIFIER: &'static str = "infocom.ssu.ac.kr";
-    const TITLE: &'static str = "숭실대학교 컴퓨터학부 공지사항";
-    const DESCRIPTION: &'static str = "숭실대학교 컴퓨터학부 공지사항을 제공합니다.";
+    const TITLE: &'static str = "숭실대학교 전자정보공학부 공지사항";
+    const DESCRIPTION: &'static str = "숭실대학교 전자정보공학부 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://infocom.ssu.ac.kr/kor/notice/undergraduate.php";
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
@@ -259,30 +252,11 @@ impl SsufidPlugin for InfocomPlugin {
         while let Some(result) = fetch_futures.next().await {
             match result {
                 Ok((meta, details)) => {
-                    let date_format_desc = "[year].[month].[day]";
-                    let date_format =
-                        time::format_description::parse(date_format_desc).map_err(|e| {
-                            PluginError::parse::<Self>(format!(
-                                "Invalid date format description '{}': {}",
-                                date_format_desc, e
-                            ))
-                        })?;
-
-                    let cleaned_date_str = meta.date_str.replace(". ", ".");
-                    let parsed_date = Date::parse(&cleaned_date_str, &date_format).map_err(|e| {
-                        PluginError::parse::<Self>(format!(
-                            "Failed to parse date string '{}' (cleaned: '{}') for post id {}: {}",
-                            meta.date_str, cleaned_date_str, meta.id, e
-                        ))
-                    })?;
-
-                    let created_at = parsed_date.midnight().assume_offset(offset!(+09:00));
-
                     final_posts.push(SsufidPost {
                         id: meta.id,
                         url: meta.url,
                         title: meta.title,
-                        created_at,
+                        created_at: meta.date,
                         author: None,         // Author info is not available
                         description: None, // Description can be part of content if needed, or fetched separately
                         category: Vec::new(), // Category info is not available
