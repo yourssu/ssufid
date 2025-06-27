@@ -20,7 +20,7 @@ impl SsfilmPlugin {
         let mut last_notice_index: Option<u32> = None;
         while posts.len() < posts_limit as usize {
             let url = if let Some(index) = last_notice_index {
-                &format!("{}?LastNoticeIndex={}", base_url, index)
+                &format!("{base_url}?LastNoticeIndex={index}")
             } else {
                 base_url
             };
@@ -146,7 +146,7 @@ fn construct_file_url(file_data: &str, org_file: &str) -> String {
         .append_pair("filename", file_data)
         .append_pair(
             "filepath",
-            format!("/resource/upload/notice/{}", org_file).as_str(),
+            format!("/resource/upload/notice/{org_file}").as_str(),
         );
     download_url.to_string()
 }

@@ -337,8 +337,7 @@ mod tests {
         let plugin = MePlugin::new();
         let sample_post_idx = "3061557";
         let sample_post_url = format!(
-            "https://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={}",
-            sample_post_idx
+            "https://me.ssu.ac.kr/notice/notice01.php?admin_mode=read&no={sample_post_idx}"
         );
         let sample_post_id = sample_post_idx.to_string();
         let sample_author = "관리자".to_string();
@@ -363,12 +362,11 @@ mod tests {
                     "Post content should not be empty (fetched from view page)"
                 );
                 assert!(!post.attachments.is_empty(), "Post should have attachments");
-                println!("Fetched single post successfully: {:?}", post);
+                println!("Fetched single post successfully: {post:?}");
             }
             Err(e) => {
                 panic!(
-                    "Failed to fetch sample post directly: {}\\nURL: {}\\nP.S. This test requires network access and a valid post IDX.",
-                    e, sample_post_url
+                    "Failed to fetch sample post directly: {e}\\nURL: {sample_post_url}\\nP.S. This test requires network access and a valid post IDX."
                 );
             }
         }
@@ -408,8 +406,7 @@ mod tests {
             }
             Err(e) => {
                 panic!(
-                    "Crawl failed: {}\\nP.S. This test requires network access and correct selectors.",
-                    e
+                    "Crawl failed: {e}\\nP.S. This test requires network access and correct selectors."
                 );
             }
         }

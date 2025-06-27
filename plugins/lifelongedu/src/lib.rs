@@ -124,7 +124,7 @@ impl LifelongEduPlugin {
         };
 
         Ok(
-            PrimitiveDateTime::parse(&format!("20{}", date_time_part_to_parse), DATE_FORMAT)
+            PrimitiveDateTime::parse(&format!("20{date_time_part_to_parse}"), DATE_FORMAT)
                 .map_err(|e| {
                     tracing::error!(
                         "PrimitiveDateTime::parse failed for '{}': {:?}",
@@ -474,8 +474,7 @@ mod tests {
         // This wr_id might change, pick one from the latest page 1 listing if test fails
         let sample_wr_id = "709";
         let sample_url = format!(
-            "http://lifelongedu.ssu.ac.kr/bbs/board.php?bo_table=univ&wr_id={}",
-            sample_wr_id
+            "http://lifelongedu.ssu.ac.kr/bbs/board.php?bo_table=univ&wr_id={sample_wr_id}"
         );
         let metadata = LifelongEduMetadata {
             id: sample_wr_id.to_string(),

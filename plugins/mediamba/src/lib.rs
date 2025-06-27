@@ -21,8 +21,7 @@ impl MediambaPlugin {
         posts_limit: u32,
     ) -> Result<Vec<MediambaPost>, PluginError> {
         let res = reqwest::get(format!(
-            "{}/v1/board/?page=0&size={}&menuId=89&content=",
-            base_url, posts_limit
+            "{base_url}/v1/board/?page=0&size={posts_limit}&menuId=89&content="
         ))
         .await
         .map_err(|e| PluginError::request::<Self>(e.to_string()))?

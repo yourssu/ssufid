@@ -324,7 +324,7 @@ impl SsufidPlugin for SsuDormPlugin {
             .map_err(|e| {
                 PluginError::custom::<SsuDormPlugin>(
                     "CrawlError".to_string(),
-                    format!("Failed to fetch all posts: {}", e),
+                    format!("Failed to fetch all posts: {e}"),
                 )
             })
     }

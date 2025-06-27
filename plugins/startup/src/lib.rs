@@ -17,8 +17,7 @@ impl StartupPlugin {
     async fn list_posts(base_url: &str, posts_limit: u32) -> Result<Vec<StartupPost>, PluginError> {
         let res = reqwest::Client::new()
         .get(format!(
-            "{}/board/content/list?boardEnName=notice&categoryCodeId&pageNum=1&pageSize={}&searchMonth=",
-            base_url, posts_limit
+            "{base_url}/board/content/list?boardEnName=notice&categoryCodeId&pageNum=1&pageSize={posts_limit}&searchMonth="
         )).header(CONTENT_TYPE, "application/json")
         .send()
         .await

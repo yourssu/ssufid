@@ -75,7 +75,7 @@ enum MetadataError {
 
 impl From<MetadataError> for PluginError {
     fn from(err: MetadataError) -> Self {
-        PluginError::parse::<ChemEngPlugin>(format!("Metadata error: {}", err))
+        PluginError::parse::<ChemEngPlugin>(format!("Metadata error: {err}"))
     }
 }
 
@@ -132,12 +132,12 @@ impl ChemEngPlugin {
             .send()
             .await
             .map_err(|e| {
-                PluginError::request::<Self>(format!("Requesting list page {}: {}", page_num, e))
+                PluginError::request::<Self>(format!("Requesting list page {page_num}: {e}"))
             })?
             .text()
             .await
             .map_err(|e| {
-                PluginError::parse::<Self>(format!("Parsing list page {}: {}", page_num, e))
+                PluginError::parse::<Self>(format!("Parsing list page {page_num}: {e}"))
             })?;
 
         let document = Html::parse_document(&response_text);
@@ -182,8 +182,7 @@ impl ChemEngPlugin {
                 .join(relative_url_str)
                 .map_err(|e| {
                     PluginError::parse::<Self>(format!(
-                        "Invalid post URL '{}': {}",
-                        relative_url_str, e
+                        "Invalid post URL '{relative_url_str}': {e}"
                     ))
                 })?;
 
@@ -397,14 +396,13 @@ impl SsufidPlugin for ChemEngPlugin {
                 .await
                 .map_err(|e| {
                     PluginError::request::<Self>(format!(
-                        "Fetching first page for total_pages: {}",
-                        e
+                        "Fetching first page for total_pages: {e}"
                     ))
                 })?
                 .text()
                 .await
                 .map_err(|e| {
-                    PluginError::parse::<Self>(format!("Parsing first page for total_pages: {}", e))
+                    PluginError::parse::<Self>(format!("Parsing first page for total_pages: {e}"))
                 })?;
             let first_page_document = Html::parse_document(&first_page_response_text);
             self.get_total_pages_from_list_html(&first_page_document)
@@ -553,8 +551,7 @@ mod tests {
             }
             Err(e) => {
                 panic!(
-                    "Failed to fetch page 1 metadata: {:?}. Check network connectivity, list page selectors, or if the website structure has changed.",
-                    e
+                    "Failed to fetch page 1 metadata: {e:?}. Check network connectivity, list page selectors, or if the website structure has changed."
                 );
             }
         }
@@ -663,8 +660,7 @@ mod tests {
         // Example: The site shows "1 / 69", so we expect around 69.
         assert!(
             (1..200).contains(&total_pages),
-            "Total pages ({}) seems out of a reasonable range (expected e.g. 1-199). Check parsing.",
-            total_pages
+            "Total pages ({total_pages}) seems out of a reasonable range (expected e.g. 1-199). Check parsing."
         );
     }
 
@@ -694,9 +690,7 @@ mod tests {
                     assert_eq!(
                         posts.len(),
                         limit as usize,
-                        "Expected exactly {} posts for limit {} when site has enough posts.",
-                        limit,
-                        limit
+                        "Expected exactly {limit} posts for limit {limit} when site has enough posts."
                     );
                 }
                 for post in &posts {
@@ -711,8 +705,7 @@ mod tests {
             }
             Err(e) => {
                 panic!(
-                    "Crawl with limit {} failed: {:?}. This could indicate a problem with fetching metadata, individual posts, or logic in the crawl loop.",
-                    limit, e
+                    "Crawl with limit {limit} failed: {e:?}. This could indicate a problem with fetching metadata, individual posts, or logic in the crawl loop."
                 );
             }
         }
@@ -733,7 +726,7 @@ mod tests {
                 );
             }
             Err(e) => {
-                panic!("Crawl with limit 0 failed unexpectedly: {:?}", e);
+                panic!("Crawl with limit 0 failed unexpectedly: {e:?}");
             }
         }
     }
