@@ -14,13 +14,11 @@ use time::{
 
 // Selectors updated based on previous HTML analysis during the temp_fetcher step
 struct Selectors {
-    notices_container: Selector,
-    notice_item: Selector,
+    notice_items: Selector,
     post_link_and_title: Selector,
-    date_list: Selector, // Covers combined date/author string
+    date_author: Selector, // Covers combined date/author string
 
     title_detail: Selector,
-    author_detail: Selector, // Covers combined date/author string from detail page header
     content_detail: Selector,
     attachments_container: Selector,
     attachment_item: Selector,
@@ -30,20 +28,17 @@ impl Selectors {
     fn new() -> Self {
         Self {
             // --- List Page (Based on biz.ssu.ac.kr structure from temp_fetcher) ---
-            notices_container: Selector::parse("ul#bList01")
-                .expect("Failed to parse notices_container selector"),
-            notice_item: Selector::parse("li").expect("Failed to parse notice_item selector"),
+            notice_items: Selector::parse("ul#bList01 li")
+                .expect("Failed to parse notices_item selector"),
             post_link_and_title: Selector::parse("div > a")
                 .expect("Failed to parse post_link_and_title selector"),
-            date_list: Selector::parse("div:nth-of-type(2) > span") // Selector for the "date / author" string
+            date_author: Selector::parse("div:nth-of-type(2) > span") // Selector for the "date / author" string
                 .expect("Failed to parse date_list selector"),
 
             // --- Detail Page (Based on biz.ssu.ac.kr structure from temp_fetcher) ---
-            title_detail: Selector::parse("div#postTitle > span.fixedPost")
+            title_detail: Selector::parse("div#postTitle > span")
                 .expect("Failed to parse title_detail selector"),
-            author_detail: Selector::parse("div#postTitle") // Selector for the div containing title and date/author string
-                .expect("Failed to parse author_detail selector"),
-            content_detail: Selector::parse("ul#postContent")
+            content_detail: Selector::parse("div#postContents")
                 .expect("Failed to parse content_detail selector"),
             attachments_container: Selector::parse("ul#postFileList")
                 .expect("Failed to parse attachments_container selector"),
@@ -57,15 +52,12 @@ impl Selectors {
 struct BizMetadata {
     id: String,
     url: String,
-    // title_on_list removed as it's not used for final SsufidPost if detail page title is preferred
-    author_on_list: Option<String>,
-    // date_on_list_str removed as SsufidPost uses date from detail page
+    date_str: String,
+    author: String,
 }
 
 #[derive(Debug, Error)]
 enum BizScrapingError {
-    #[error("List page: Notice container (ul#bList01) not found")]
-    NoticeContainerMissing,
     #[error("List page: Post link not found in list item (li > div > a)")]
     LinkNotFound,
     // TitleNotFound commented out as empty titles on list are handled with a placeholder
@@ -75,8 +67,6 @@ enum BizScrapingError {
     IdParamMissing(String),
     #[error("List page: Date/Author string not found for post")]
     DateAuthorStringMissingList,
-    #[error("List page: Could not parse date from date/author string: '{0}'")]
-    DateParseErrorList(String),
     // AuthorParseErrorList commented out as author is optional and parsing combined string
     // #[error("List page: Could not parse author from date/author string: '{0}'")]
     // AuthorParseErrorList(String),
@@ -84,8 +74,6 @@ enum BizScrapingError {
     TitleNotFoundDetail(String),
     #[error("Detail page: Content (ul#postContent) not found for URL: {0}")]
     ContentNotFoundDetail(String),
-    #[error("Detail page: Date/Author string (div#postTitle) not found for URL: {0}")]
-    DateAuthorStringMissingDetail(String),
     #[error("Detail page: Date parsing error '{date_str}': {source}")]
     DateParseErrorDetail {
         date_str: String,
@@ -112,11 +100,21 @@ impl Default for BizPlugin {
 const DATE_FORMAT_BIZ: &[time::format_description::FormatItem<'static>] =
     format_description!("[year]-[month]-[day]"); // format_description! macro is brought into scope by the use statement above
 
-fn parse_date_author_string(s: &str) -> (Option<String>, Option<String>) {
+fn parse_date_author_string(s: &str) -> Result<(String, String), PluginError> {
     let parts: Vec<&str> = s.splitn(2, '/').map(str::trim).collect();
-    let date_str = parts.first().map(|x| x.to_string()); // Clippy: Use .first()
-    let author_str = parts.get(1).map(|x| x.to_string());
-    (date_str, author_str)
+    let date_str = parts
+        .first()
+        .map(|x| x.to_string())
+        .ok_or(PluginError::parse::<BizPlugin>(
+            BizScrapingError::DateExtractionErrorDetail(s.to_string()).to_string(),
+        ))?;
+    let author_str = parts
+        .get(1)
+        .map(|x| x.to_string())
+        .ok_or(PluginError::parse::<BizPlugin>(
+            BizScrapingError::DateExtractionErrorDetail(s.to_string()).to_string(),
+        ))?;
+    Ok((date_str, author_str))
 }
 
 impl BizPlugin {
@@ -154,14 +152,7 @@ impl BizPlugin {
         let document = Html::parse_document(&response_text);
         let mut metadata_list = Vec::new();
 
-        let notices_ul = document
-            .select(&self.selectors.notices_container)
-            .next()
-            .ok_or_else(|| {
-                PluginError::parse::<Self>(BizScrapingError::NoticeContainerMissing.to_string())
-            })?;
-
-        for item_li in notices_ul.select(&self.selectors.notice_item) {
+        for item_li in document.select(&self.selectors.notice_items) {
             let link_element = match item_li.select(&self.selectors.post_link_and_title).next() {
                 Some(el) => el,
                 None => {
@@ -190,14 +181,13 @@ impl BizPlugin {
                 .join(relative_url)
                 .map_err(|e| {
                     PluginError::parse::<Self>(format!(
-                        "URL join error for '{}' with base '{}': {}",
-                        relative_url, base_url_for_join, e
+                        "URL join error for '{relative_url}' with base '{base_url_for_join}': {e}",
                     ))
                 })?
                 .to_string();
 
             let parsed_url = Url::parse(&full_url).map_err(|e| {
-                PluginError::parse::<Self>(format!("URL re-parse error for '{}': {}", full_url, e))
+                PluginError::parse::<Self>(format!("URL re-parse error for '{full_url}': {e}"))
             })?;
 
             let id = parsed_url
@@ -231,7 +221,7 @@ impl BizPlugin {
             }
 
             let date_author_str_element = item_li
-                .select(&self.selectors.date_list)
+                .select(&self.selectors.date_author)
                 .next()
                 .ok_or_else(|| {
                     PluginError::parse::<Self>(
@@ -244,22 +234,13 @@ impl BizPlugin {
                 .collect::<String>()
                 .trim()
                 .to_string();
-            let (_date_on_list_opt, author_on_list_opt) =
-                parse_date_author_string(&date_author_str);
-
-            // date_on_list_str is removed from BizMetadata, so no need to assign it.
-            // We still parse it to check if the string format is as expected.
-            if _date_on_list_opt.is_none() {
-                return Err(PluginError::parse::<Self>(
-                    BizScrapingError::DateParseErrorList(date_author_str.clone()).to_string(),
-                ));
-            }
-            let author_on_list = author_on_list_opt.filter(|s| !s.is_empty());
+            let (date_str, author) = parse_date_author_string(&date_author_str)?;
 
             metadata_list.push(BizMetadata {
                 id,
                 url: full_url,
-                author_on_list,
+                date_str,
+                author,
             });
         }
         Ok(metadata_list)
@@ -290,37 +271,11 @@ impl BizPlugin {
                 )
             })?;
 
-        let date_author_div = document
-            .select(&self.selectors.author_detail)
-            .next()
-            .ok_or_else(|| {
-                PluginError::parse::<Self>(
-                    BizScrapingError::DateAuthorStringMissingDetail(post_metadata.url.clone())
-                        .to_string(),
-                )
-            })?;
-
-        let full_header_text = date_author_div.text().collect::<String>();
-        // Remove the title from the header text to isolate date/author string
-        // This might be fragile if title appears elsewhere in header text.
-        let date_author_part = full_header_text.replace(&title, "").trim().to_string();
-
-        let (date_str_opt, author_str_opt) = parse_date_author_string(&date_author_part);
-
-        let date_str = date_str_opt.ok_or_else(|| {
-            PluginError::parse::<Self>(
-                BizScrapingError::DateExtractionErrorDetail(date_author_part.clone()).to_string(),
-            )
-        })?;
-        let author_detail_opt = author_str_opt.filter(|s| !s.is_empty());
-
-        let final_author = author_detail_opt.or_else(|| post_metadata.author_on_list.clone());
-
-        let created_at = Date::parse(&date_str, &DATE_FORMAT_BIZ)
+        let created_at = Date::parse(&post_metadata.date_str, &DATE_FORMAT_BIZ)
             .map_err(|e| {
                 PluginError::parse::<Self>(
                     BizScrapingError::DateParseErrorDetail {
-                        date_str: date_str.clone(),
+                        date_str: post_metadata.date_str.clone(),
                         source: e,
                     }
                     .to_string(),
@@ -352,8 +307,7 @@ impl BizPlugin {
                         .join(href)
                         .map_err(|e| {
                             PluginError::parse::<Self>(format!(
-                                "Attachment URL join error for '{}' with base '{}': {}",
-                                href, attachment_base, e
+                                "Attachment URL join error for '{href}' with base '{attachment_base}': {e}"
                             ))
                         })?
                         .to_string();
@@ -371,7 +325,7 @@ impl BizPlugin {
         Ok(SsufidPost {
             id: post_metadata.id.clone(),
             url: post_metadata.url.clone(),
-            author: final_author,
+            author: Some(post_metadata.author.clone()),
             title,
             description: None,
             category: vec![],
@@ -387,8 +341,8 @@ impl BizPlugin {
 
 impl SsufidPlugin for BizPlugin {
     const IDENTIFIER: &'static str = "biz.ssu.ac.kr";
-    const TITLE: &'static str = "숭실대학교 경영대학 공지사항";
-    const DESCRIPTION: &'static str = "숭실대학교 경영대학 홈페이지의 공지사항을 제공합니다.";
+    const TITLE: &'static str = "숭실대학교 경영학부 공지사항";
+    const DESCRIPTION: &'static str = "숭실대학교 경영학부 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = BizPlugin::BIZ_BASE_URL;
 
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
@@ -481,21 +435,9 @@ mod tests {
 
     #[test]
     fn test_parse_date_author_string() {
-        let (date, author) = parse_date_author_string("2024-07-30 / 경영학부");
-        assert_eq!(date, Some("2024-07-30".to_string()));
-        assert_eq!(author, Some("경영학부".to_string()));
-
-        let (date, author) = parse_date_author_string("2024-07-30 / 국제처");
-        assert_eq!(date, Some("2024-07-30".to_string()));
-        assert_eq!(author, Some("국제처".to_string()));
-
-        let (date, author) = parse_date_author_string("2024-07-30");
-        assert_eq!(date, Some("2024-07-30".to_string()));
-        assert_eq!(author, None);
-
-        let (date, author) = parse_date_author_string("  2023-01-01   /   Some Author  ");
-        assert_eq!(date, Some("2023-01-01".to_string()));
-        assert_eq!(author, Some("Some Author".to_string()));
+        let (date, author) = parse_date_author_string("2024-07-30 / 경영학부").unwrap();
+        assert_eq!(date, "2024-07-30".to_string());
+        assert_eq!(author, "경영학부".to_string());
     }
 
     #[traced_test]
@@ -536,11 +478,10 @@ mod tests {
                         r.status(),
                         r.text().await.unwrap_or_default()
                     ),
-                    Err(re) => format!("Request error: {}", re),
+                    Err(re) => format!("Request error: {re}"),
                 };
                 panic!(
-                    "fetch_page_posts_metadata failed: {}\nResponse details: {}",
-                    e, status_and_body
+                    "fetch_page_posts_metadata failed: {e}\nResponse details: {status_and_body}"
                 );
             }
         }
@@ -597,7 +538,7 @@ mod tests {
                         r.status(),
                         r.text().await.unwrap_or_default()
                     ),
-                    Err(re) => format!("Request error: {}", re),
+                    Err(re) => format!("Request error: {re}"),
                 };
                 panic!(
                     "fetch_post for '{}' failed: {}\nResponse details: {}",
@@ -624,13 +565,12 @@ mod tests {
                 // For a notice board, it's usually expected to have at least a few.
                 assert!(
                     !posts.is_empty(),
-                    "Crawl returned no posts, expected at least 1 (up to limit of {}).",
-                    limit
+                    "Crawl returned no posts, expected at least 1 (up to limit of {limit})."
                 );
                 tracing::info!("Crawled {} posts successfully.", posts.len());
             }
             Err(e) => {
-                panic!("crawl(limit={}) failed: {}", limit, e);
+                panic!("crawl(limit={limit}) failed: {e}");
             }
         }
     }
