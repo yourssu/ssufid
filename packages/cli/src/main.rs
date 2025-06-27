@@ -19,6 +19,7 @@ use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssudorm::SsuDormPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
 use ssufid_startup::StartupPlugin;
+use ssufid_stu::StuPlugin;
 use ssufid_study::StudyPlugin;
 use tokio::io::AsyncWriteExt;
 use tracing::level_filters::LevelFilter;
@@ -148,6 +149,7 @@ register_plugins! {
         std::env::var("SSU_PASSWORD").unwrap_or_default()
     )),
     Startup(StartupPlugin) => StartupPlugin,
+    Stu(StuPlugin) => StuPlugin,
     Study(StudyPlugin) => StudyPlugin,
     Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),

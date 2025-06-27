@@ -50,6 +50,7 @@ ssufid_oasis = { path = "plugins/oasis" }
 ssufid_startup = { path = "plugins/startup" }
 ssufid_inso = { path = "plugins/inso" }
 ssufid_ssfilm = { path = "plugins/ssfilm" }
+ssufid_stu = { path = "plugins/stu" }
 ssufid_study = { path = "plugins/study" }
 ssufid_lawyer = { path = "plugins/lawyer" }
 ssufid_infocom = { path = "plugins/infocom" }

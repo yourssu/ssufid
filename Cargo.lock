@@ -2087,6 +2087,7 @@ dependencies = [
  "ssufid_ssudorm",
  "ssufid_ssupath",
  "ssufid_startup",
+ "ssufid_stu",
  "ssufid_study",
  "time",
  "tokio",
@@ -2348,6 +2349,23 @@ dependencies = [
 
 [[package]]
 name = "ssufid_startup"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "reqwest",
+ "scraper",
+ "serde",
+ "serde_json",
+ "ssufid",
+ "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_stu"
 version = "0.1.0"
 dependencies = [
  "futures",
