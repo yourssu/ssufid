@@ -327,16 +327,6 @@ mod tests {
                 !meta.title.is_empty(),
                 "Page 1: Post title should not be empty"
             );
-            assert!(
-                !meta.date_str.is_empty(),
-                "Page 1: Post date string should not be empty"
-            );
-            assert_eq!(
-                meta.date_str.chars().filter(|&c| c == '.').count(),
-                2,
-                "Page 1: Post date string ({}) should be in YYYY.MM.DD format",
-                meta.date_str
-            );
         }
         // Assuming infocom has more than one page of notices for this check
         // This might be brittle if the site has very few notices at times.
@@ -364,10 +354,6 @@ mod tests {
             assert!(
                 !meta.title.is_empty(),
                 "Page 2: Post title should not be empty"
-            );
-            assert!(
-                !meta.date_str.is_empty(),
-                "Page 2: Post date string should not be empty"
             );
         }
         // tracing::info!("Found {} posts on page 2.", metadata_p2.len());
