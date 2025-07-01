@@ -27,6 +27,10 @@ on:
         required: false
         type: number
         default: 30
+      excludes:
+        required: false
+        type: string
+        default: 
     secrets:
       SSU_ID:
         required: true
@@ -83,7 +87,7 @@ jobs:
           SSU_PASSWORD: ${{ secrets.SSU_PASSWORD }}
         run: |
           cd ssufid
-          cargo run -- -l ${{ inputs.limit }}
+          cargo run -- -l ${{ inputs.limit }} -e "${{ inputs.excludes }}"
           cd -
 
       - name: Upload reports

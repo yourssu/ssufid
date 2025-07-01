@@ -15,6 +15,7 @@ jobs:
       dry-run: true
       ssufid-ref: ${{ github.head_ref || 'main' }}
       limit: 20
+      excludes: ${{ vars.EXCLUDES }}
     secrets:
       SSU_ID: ${{ secrets.SSU_ID }}
       SSU_PASSWORD: ${{ secrets.SSU_PASSWORD }}
