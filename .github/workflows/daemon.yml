@@ -40,6 +40,8 @@ on:
         required: false
       SLACK_CHANNEL_ID:
         required: false
+      SLACK_ERROR_CHANNEL_ID:
+        required: false
 
 jobs:
   daemon:
