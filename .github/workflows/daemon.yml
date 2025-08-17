@@ -111,12 +111,12 @@ jobs:
         if: always()
         run: |
           echo "${{ steps.content_report.outputs.markdown }}" >> $GITHUB_STEP_SUMMARY
-      - name: Report erro to the Slack
+      - name: Report error to the Slack
         if: ${{ !inputs.dry-run && failure() }}
         env:
           SLACK_MESSAGE: ${{ steps.content_report.outputs.slack }}
         run: |
-          curl -F $"blocks=$SLACK_MESSAGE" -F "channel=${{ secrets_SLACK_ERROR_CHANNEL_ID || secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
+          curl -F $"blocks=$SLACK_MESSAGE" -F "channel=${{ secrets.SLACK_ERROR_CHANNEL_ID || secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
       - name: Report created posts to the Slack
         if: ${{ !inputs.dry-run && (steps.content_report.outputs.post_created > 0) }}
         env:
