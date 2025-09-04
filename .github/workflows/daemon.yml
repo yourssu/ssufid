@@ -30,7 +30,7 @@ on:
       excludes:
         required: false
         type: string
-        default: 
+        default: ""
     secrets:
       SSU_ID:
         required: true
