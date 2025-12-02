@@ -36,7 +36,7 @@ impl Selectors {
             li: Selector::parse("li").unwrap(),
             url: Selector::parse(".notice_col3 a").unwrap(),
             author: Selector::parse(".notice_col4").unwrap(),
-            title: Selector::parse("div.bg-white h2").unwrap(),
+            title: Selector::parse("div.bg-white h1").unwrap(),
             category: Selector::parse("div.bg-white span.label").unwrap(),
             created_at: Selector::parse("div.bg-white > div.clearfix > div.float-left.mr-4")
                 .unwrap(),
@@ -346,6 +346,8 @@ mod tests {
             .fetch_post(first_post_metadata)
             .await
             .expect("Failed to fetch post");
+
+        println!("First post: {:?}", post);
 
         // 제목, 카테고리, 내용 등이 올바르게 추출되었는지 확인
         assert!(!post.title.is_empty(), "Title should not be empty");

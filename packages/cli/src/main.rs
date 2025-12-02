@@ -9,8 +9,6 @@ use ssufid_common::sites::*;
 use ssufid_ee::EePlugin;
 use ssufid_infocom::InfocomPlugin;
 use ssufid_inso::InsoPlugin;
-use ssufid_lawyer::LawyerPlugin;
-use ssufid_lifelongedu::LifelongEduPlugin;
 use ssufid_materials::MaterialsPlugin;
 use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
