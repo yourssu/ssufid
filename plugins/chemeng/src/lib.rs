@@ -345,8 +345,8 @@ impl ChemEngPlugin {
             .select(&Selector::parse("body").unwrap())
             .next()
             .map(|b| b.text().collect::<String>());
-        if let Some(body_text) = body_text_nodes {
-            if let Some(page_info_start_idx) = body_text.find("페이지정보 :") {
+        if let Some(body_text) = body_text_nodes
+            && let Some(page_info_start_idx) = body_text.find("페이지정보 :") {
                 let relevant_part = &body_text[page_info_start_idx + "페이지정보 :".len()..];
                 if let Some(slash_idx) = relevant_part.find('/') {
                     let after_slash = &relevant_part[slash_idx + 1..];
@@ -356,18 +356,16 @@ impl ChemEngPlugin {
                         .chars()
                         .take_while(|c| c.is_ascii_digit())
                         .collect();
-                    if let Ok(num_pages) = total_pages_str.parse::<u32>() {
-                        if num_pages > 0 {
+                    if let Ok(num_pages) = total_pages_str.parse::<u32>()
+                        && num_pages > 0 {
                             tracing::debug!(
                                 "Parsed total pages from '페이지정보' text: {}",
                                 num_pages
                             );
                             return num_pages;
                         }
-                    }
                 }
             }
-        }
         tracing::warn!(
             "Could not parse total pages from '페이지정보' text. Using fallback of 70 based on observation."
         );

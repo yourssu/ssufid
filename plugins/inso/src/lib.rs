@@ -201,9 +201,8 @@ impl InsoPlugin {
             .midnight()
             .assume_offset(offset!(+09:00));
 
-        let category = extract_str(metadata.nth(1)).map_err(|e| {
-            PluginError::parse::<Self>(format!("Failed to extract category: {e}"))
-        })?;
+        let category = extract_str(metadata.nth(1))
+            .map_err(|e| PluginError::parse::<Self>(format!("Failed to extract category: {e}")))?;
 
         let mut attachments = Vec::new();
 
