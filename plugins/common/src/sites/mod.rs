@@ -268,12 +268,18 @@ pub mod law {
 pub use law::LawPlugin;
 
 pub mod lawyer {
+    use crate::common::wordpress::{
+        KorDateWordpressPostResolver, metadata::KorDateWordpressMetadataResolver,
+    };
+
     crate::wordpress_plugin!(
         LawyerPlugin,
         "lawyer.ssu.ac.kr",
         "숭실대학교 국제법무학과 공지사항",
         "숭실대학교 국제법무학과 홈페이지의 공지사항을 제공합니다.",
-        "https://lawyer.ssu.ac.kr/%ED%95%99%EA%B3%BC-%EC%86%8C%EC%8B%9D/%ED%95%99%EA%B3%BC-%EA%B3%B5%EC%A7%80/"
+        "https://lawyer.ssu.ac.kr/%ED%95%99%EA%B3%BC-%EC%86%8C%EC%8B%9D/%ED%95%99%EA%B3%BC-%EA%B3%B5%EC%A7%80/",
+        KorDateWordpressMetadataResolver,
+        KorDateWordpressPostResolver
     );
 }
 
