@@ -4,7 +4,6 @@ use std::{collections::BTreeMap, sync::LazyLock};
 
 use scraper::{ElementRef, Selector};
 use serde::Deserialize;
-use serde_yaml::Mapping;
 use table::{SsuPathCourseTable, SsuPathProgramTable};
 use time::OffsetDateTime;
 
@@ -274,35 +273,70 @@ impl SsuPathProgram {
     }
 }
 
+pub fn construct_frontmatters(
+    program_table: &SsuPathProgramTable,
+    course_table: &Option<SsuPathCourseTable>,
+    division_table: &Option<table::SsuPathDivisionTable>,
+) -> BTreeMap<String, String> {
+    let mut frontmatters = BTreeMap::new();
+
+    // program_table.info를 BTreeMap으로 변환
+    if let Ok(yaml_str) = serde_yaml::to_string(&program_table.info)
+        && let Ok(value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str)
+        && let Some(mapping) = value.as_mapping()
+    {
+        for (k, v) in mapping {
+            if let (Some(key), Some(val)) = (k.as_str(), v.as_str()) {
+                frontmatters.insert(key.to_string(), val.to_string());
+            }
+        }
+    }
+
+    // course_table 정보 추가
+    if let Some(course_table) = course_table {
+        if let Ok(yaml_str) = serde_yaml::to_string(&course_table.overview)
+            && let Ok(value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str)
+            && let Some(mapping) = value.as_mapping()
+        {
+            for (k, v) in mapping {
+                if let (Some(key), Some(val)) = (k.as_str(), v.as_str()) {
+                    frontmatters.insert(key.to_string(), val.to_string());
+                }
+            }
+        }
+
+        for (week_name, week_table) in &course_table.weeks {
+            if let Ok(yaml_str) = serde_yaml::to_string(week_table) {
+                frontmatters.insert(week_name.clone(), yaml_str);
+            }
+        }
+    }
+
+    // division_table 정보 추가
+    if let Some(division_table) = division_table
+        && let Ok(yaml_str) = serde_yaml::to_string(&division_table.rows)
+    {
+        frontmatters.insert("분반".to_string(), yaml_str);
+    }
+
+    frontmatters
+}
+
 pub fn construct_content(
     program_table: &SsuPathProgramTable,
     course_table: &Option<SsuPathCourseTable>,
     division_table: &Option<table::SsuPathDivisionTable>,
 ) -> String {
-    let mut frontmatters = String::new();
-    frontmatters.push_str(&serde_yaml::to_string(&program_table.info).unwrap());
-    frontmatters.push('\n');
-    if let Some(course_table) = course_table {
-        frontmatters.push_str(&serde_yaml::to_string(&course_table.overview).unwrap());
-        for (week_name, week_table) in &course_table.weeks {
-            let val = serde_yaml::Value::Mapping(Mapping::from_iter([(
-                serde_yaml::to_value(week_name).unwrap(),
-                serde_yaml::to_value(week_table).unwrap(),
-            )]));
-            frontmatters.push_str(&serde_yaml::to_string(&val).unwrap());
-        }
-    }
-    if let Some(division_table) = division_table {
-        let val = serde_yaml::Value::Mapping(Mapping::from_iter([(
-            serde_yaml::to_value("분반").unwrap(),
-            serde_yaml::to_value(&division_table.rows).unwrap(),
-        )]));
-        frontmatters.push_str(&serde_yaml::to_string(&val).unwrap());
-    }
+    let frontmatters = construct_frontmatters(program_table, course_table, division_table);
+    let frontmatters_str = frontmatters
+        .iter()
+        .map(|(k, v)| format!("{}: {}", k, v))
+        .collect::<Vec<_>>()
+        .join("\n");
     let mut content = String::new();
     content.push_str(&format!(
         "---\n{}\n---\n{}",
-        frontmatters, program_table.content
+        frontmatters_str, program_table.content
     ));
     content
 }
