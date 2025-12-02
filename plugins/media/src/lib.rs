@@ -1,177 +1,188 @@
-use std::sync::LazyLock;
+use std::process::Command;
 
-use futures::{TryStreamExt as _, stream::FuturesUnordered};
-use scraper::{ElementRef, Html, Selector, html::Select};
+use futures::{TryStreamExt, stream::FuturesOrdered};
+use serde::Deserialize;
+use ssufid::{
+    PluginError,
+    core::{SsufidPlugin, SsufidPost},
+};
 use time::{
     OffsetDateTime, PrimitiveDateTime,
     macros::{format_description, offset},
 };
 
-use ssufid::{
-    PluginError,
-    core::{Attachment, SsufidPlugin, SsufidPost},
-};
-
-trait SelectExt {
-    fn elem_first(&mut self) -> Result<ElementRef, PluginError>;
-
-    fn text_first(&mut self) -> Result<String, PluginError>;
-
-    fn html_first(&mut self) -> Result<String, PluginError>;
-}
-
-impl SelectExt for Select<'_, '_> {
-    fn elem_first(&mut self) -> Result<ElementRef, PluginError> {
-        self.next().ok_or(PluginError::parse::<MediaPlugin>(
-            "Failed to get element".to_string(),
-        ))
-    }
-    fn text_first(&mut self) -> Result<String, PluginError> {
-        Ok(self.elem_first()?.text().collect::<String>())
-    }
-
-    fn html_first(&mut self) -> Result<String, PluginError> {
-        Ok(self.elem_first()?.html())
-    }
-}
-
 pub struct MediaPlugin;
+
+const NOTICE_MENU_ID: u32 = 136;
+
+impl MediaPlugin {
+    const API_BASE_URL: &'static str = "https://api.mediamba.ssu.ac.kr";
+
+    async fn list_posts(base_url: &str, posts_limit: u32) -> Result<Vec<MediaPost>, PluginError> {
+        let res = reqwest::get(format!(
+            "{base_url}/v1/board/?page=0&size={posts_limit}&menuId={NOTICE_MENU_ID}&content="
+        ))
+        .await
+        .map_err(|e| PluginError::request::<Self>(e.to_string()))?
+        .json::<MediaBoardResponse>()
+        .await
+        .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
+        if !res.success {
+            return Err(PluginError::custom::<Self>(
+                "Failed to fetch posts".to_string(),
+                res.message,
+            ));
+        }
+        Ok(res.data.boards)
+    }
+
+    async fn parse_posts(posts: Vec<MediaPost>) -> Result<Vec<SsufidPost>, PluginError> {
+        posts
+            .into_iter()
+            .map(async |post| post.to_ssufid_post("http://localhost:8000").await)
+            .collect::<FuturesOrdered<_>>()
+            .try_collect()
+            .await
+    }
+}
 
 impl SsufidPlugin for MediaPlugin {
     const IDENTIFIER: &'static str = "media.ssu.ac.kr";
     const TITLE: &'static str = "숭실대학교 글로벌미디어학부";
     const DESCRIPTION: &'static str =
         "숭실대학교 글로벌미디어학부 홈페이지의 공지사항을 제공합니다.";
-    const BASE_URL: &'static str = "http://media.ssu.ac.kr/sub.php?code=XxH00AXY&category=1";
+    const BASE_URL: &'static str = "https://media.ssu.ac.kr/board/notices";
 
-    async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
-        let post_ids = Self::list_posts(Self::BASE_URL, posts_limit).await?;
-        post_ids
-            .iter()
-            .map(|post_id| Self::get_post(post_id))
-            .collect::<FuturesUnordered<_>>()
-            .try_collect::<Vec<_>>()
-            .await
+    async fn crawl(
+        &self,
+        posts_limit: u32,
+    ) -> Result<Vec<ssufid::core::SsufidPost>, ssufid::PluginError> {
+        let mut runtime = Command::new("deno")
+            .args([
+                "run",
+                "--allow-read",
+                "--allow-write",
+                "--allow-env",
+                "--allow-net",
+                "--allow-import",
+                "./lexical-parser/src/main.ts",
+            ])
+            .spawn()
+            .map_err(|e| {
+                PluginError::custom::<MediaPlugin>(
+                    e.to_string(),
+                    "Failed to spawn lexical parser".to_string(),
+                )
+            })?;
+        let posts = Self::list_posts(Self::API_BASE_URL, posts_limit).await?;
+        let result = Self::parse_posts(posts).await.map_err(|e| {
+            PluginError::custom::<Self>(
+                e.to_string(),
+                "Thread panicked while parsing posts to html".to_string(),
+            )
+        });
+        runtime.kill().map_err(|e| {
+            PluginError::custom::<MediaPlugin>(
+                e.to_string(),
+                "Failed to kill lexical parser".to_string(),
+            )
+        })?;
+        result
     }
 }
 
-static LIST_ITEM_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse("table tbody tr a").unwrap());
+#[derive(Deserialize, Debug)]
 
-impl MediaPlugin {
-    async fn list_posts(base_url: &str, posts_limit: u32) -> Result<Vec<String>, PluginError> {
-        let res = reqwest::get(format!(
-            "{base_url}&orderType=idx&orderBy=desc&mode=list&page=1&limit={posts_limit}"
-        ))
-        .await
-        .map_err(|e| PluginError::request::<Self>(e.to_string()))?
-        .text()
-        .await
-        .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
-        let document = Html::parse_document(&res);
-        let links = document.select(&LIST_ITEM_SELECTOR);
-        links.map(as_post_id).collect()
-    }
-
-    async fn get_post(post_id: &str) -> Result<SsufidPost, PluginError> {
-        let res = reqwest::get(format!("{}&mode=view&board_num={post_id}", Self::BASE_URL))
-            .await
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?
-            .text()
-            .await
-            .map_err(|e| PluginError::parse::<Self>(e.to_string()))?;
-        let document = Html::parse_document(&res);
-        let media_post = MediaPost::from_document(Self::BASE_URL, post_id, document)?;
-        Ok(media_post.into())
-    }
+struct MediaBoardResponse {
+    success: bool,
+    data: MediaBoardData,
+    #[allow(dead_code)]
+    code: String,
+    message: String,
 }
 
-fn as_post_id(element: scraper::ElementRef) -> Result<String, PluginError> {
-    element
-        .value()
-        .attr("onclick")
-        .ok_or(PluginError::parse::<MediaPlugin>(
-            "Failed to parse post id, cannot find onclick attr".to_string(),
-        ))?
-        .split('\'')
-        .nth(1)
-        .map(str::to_string)
-        .ok_or(PluginError::parse::<MediaPlugin>(
-            "Failed to parse post id, invalid id format".to_string(),
-        ))
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct MediaBoardData {
+    boards: Vec<MediaPost>,
+    page: u32,
+    size: u32,
+    total_page: u32,
 }
 
-pub struct MediaPost {
-    pub id: String,
-    pub url: String,
-    pub title: String,
-    pub author: String,
-    pub created_at: OffsetDateTime,
-    pub attachments: Vec<Attachment>,
-    pub content: String,
-}
-
-static TITLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("#fn").unwrap());
-static AUTHOR_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse(".s_default_view_body_1 > table > tbody > tr:first-child > td:first-child > span:last-child").unwrap()
-});
-static CREATED_AT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse(".s_default_view_body_1 > table > tbody > tr:first-child > td:nth-child(2) > span:last-child").unwrap()
-});
-static ATTACHMENT_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
-    Selector::parse(".s_default_view_body_1 > table > tbody > tr:last-child a").unwrap()
-});
-static CONTENT_SELECTOR: LazyLock<Selector> =
-    LazyLock::new(|| Selector::parse(".s_default_view_body_2 > table td").unwrap());
-
-const DATE_FORMAT: &[::time::format_description::BorrowedFormatItem<'_>] =
+const DATETIME_FORMAT: &[::time::format_description::BorrowedFormatItem<'_>] =
     format_description!("[year]-[month]-[day] [hour]:[minute]:[second]");
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct MediaPost {
+    id: u32,
+    title: String,
+    is_pinned: bool,
+    hits: u32,
+    like_summary: Option<String>,
+    content: String,
+    access_role: String,
+    attachments: Option<serde_json::Value>,
+    has_attachment: bool,
+    user_id: u32,
+    user_name: String,
+    menu_id: u32,
+    board_navigation: Option<serde_json::Value>,
+    #[serde(deserialize_with = "deserialize_mediamba_datetime")]
+    created_at: OffsetDateTime,
+    #[serde(deserialize_with = "deserialize_mediamba_datetime")]
+    updated_at: OffsetDateTime,
+}
 impl MediaPost {
-    fn from_document(base_url: &str, id: &str, document: Html) -> Result<Self, PluginError> {
-        let title = document.select(&TITLE_SELECTOR).text_first()?;
-        let author = document.select(&AUTHOR_SELECTOR).text_first()?;
-        let created_at = document.select(&CREATED_AT_SELECTOR).text_first()?;
-        let created_at = PrimitiveDateTime::parse(created_at.trim(), DATE_FORMAT)
-            .map(|dt| dt.assume_offset(offset!(+9)))
-            .map_err(|e| PluginError::parse::<MediaPlugin>(format!("Failed to parse date: {e}")))?;
-        let attachments = document
-            .select(&ATTACHMENT_SELECTOR)
-            .filter_map(|element| {
-                element.value().attr("href").map(|href| {
-                    Attachment::from_guess(element.text().collect::<String>(), href.to_string())
-                })
-            })
-            .collect::<Vec<_>>();
-        let content = document.select(&CONTENT_SELECTOR).html_first()?;
+    async fn to_ssufid_post(
+        &self,
+        parser_host: &str,
+    ) -> Result<ssufid::core::SsufidPost, PluginError> {
+        let client = reqwest::Client::new();
+        let res = client
+            .post(parser_host)
+            .body(self.content.clone())
+            .send()
+            .await
+            .map_err(|e| PluginError::request::<MediaPlugin>(e.to_string()))?;
+        if !res.status().is_success() {
+            return Err(PluginError::parse::<MediaPlugin>(format!(
+                "Failed to receive content: {}",
+                res.status(),
+            )));
+        }
 
-        Ok(Self {
-            id: id.to_string(),
-            url: format!("{base_url}&mode=view&board_num={id}"),
-            title,
-            author,
-            created_at,
-            attachments,
-            content,
+        let content_html = res
+            .text()
+            .await
+            .map_err(|e| PluginError::parse::<MediaPlugin>(e.to_string()))?;
+
+        Ok(SsufidPost {
+            id: self.id.to_string(),
+            url: format!("{}/{}", MediaPlugin::BASE_URL, self.id),
+            author: Some(self.user_name.clone()),
+            title: self.title.clone(),
+            description: Some(content_html.clone()),
+            category: vec![],
+            created_at: self.created_at,
+            updated_at: Some(self.updated_at),
+            thumbnail: None,
+            content: content_html,
+            attachments: vec![],
+            metadata: None,
         })
     }
 }
 
-impl From<MediaPost> for SsufidPost {
-    fn from(post: MediaPost) -> Self {
-        Self {
-            id: post.id,
-            url: post.url,
-            title: post.title,
-            description: None,
-            thumbnail: None,
-            author: Some(post.author),
-            category: vec![],
-            created_at: post.created_at,
-            updated_at: None,
-            attachments: post.attachments,
-            content: post.content,
-            metadata: None,
-        }
-    }
+fn deserialize_mediamba_datetime<'de, D>(deserializer: D) -> Result<OffsetDateTime, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    Ok(PrimitiveDateTime::parse(&s, DATETIME_FORMAT)
+        .map_err(serde::de::Error::custom)?
+        .assume_offset(offset!(+9)))
 }
