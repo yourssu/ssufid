@@ -17,6 +17,7 @@ use super::{
     utils::{OptionExt, ParseDateRange},
 };
 
+#[derive(Debug)]
 pub struct SsuPathProgramDivision {
     pub title: String,
     pub apply_duration: (OffsetDateTime, OffsetDateTime),
@@ -27,6 +28,7 @@ pub struct SsuPathProgramDivision {
     pub location: String,
 }
 
+#[derive(Debug)]
 pub enum SsuPathProgramKind {
     Single {
         apply_duration: (OffsetDateTime, OffsetDateTime),
@@ -39,6 +41,7 @@ pub enum SsuPathProgramKind {
     Division(Vec<SsuPathProgramDivision>),
 }
 
+#[derive(Debug)]
 pub struct SsuPathProgram {
     pub id: String,
     pub thumbnail: String,
@@ -52,7 +55,7 @@ pub struct SsuPathProgram {
     pub kind: SsuPathProgramKind,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct EntryParams {
     enc_sddpb_seq: String,
