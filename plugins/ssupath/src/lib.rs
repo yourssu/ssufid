@@ -2,7 +2,7 @@ use std::sync::{Arc, LazyLock};
 
 use futures::{TryStreamExt, stream::FuturesUnordered};
 use model::{
-    SsuPathProgram, SsuPathProgramKind, construct_content,
+    SsuPathProgram, SsuPathProgramKind, construct_content, construct_frontmatters,
     table::{SsuPathCourseTable, SsuPathDivisionTable, SsuPathProgramTable},
 };
 use scraper::{Html, Selector};
@@ -203,6 +203,7 @@ async fn post(
         _ => None,
     };
     let content = construct_content(&program_table, &course_table, &division_table);
+    let frontmatters = construct_frontmatters(&program_table, &course_table, &division_table);
     Ok(SsufidPost {
         id: program.id.clone(),
         title: program_table.title,
@@ -215,7 +216,7 @@ async fn post(
         author: program.major_types.first().cloned(),
         thumbnail: Some(program.thumbnail.clone()),
         attachments: Vec::default(),
-        metadata: None,
+        metadata: Some(frontmatters),
     })
 }
 
