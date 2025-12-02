@@ -184,6 +184,7 @@ async fn entries(
 const PATH_ENTRY_URL: &str =
     "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmInfo.do?encSddpbSeq=";
 
+#[tracing::instrument(level=tracing::Level::DEBUG, skip(client, program), fields(program_id = %program.id, program_title = %program.title))]
 async fn post(
     client: &reqwest::Client,
     program: &SsuPathProgram,

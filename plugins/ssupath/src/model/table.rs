@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, sync::LazyLock};
 
 use scraper::{ElementRef, Html, Selector};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use ssufid::PluginError;
@@ -25,6 +25,7 @@ static PROGRAM_TABLE_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
 });
 
 impl SsuPathProgramTable {
+    #[tracing::instrument(level=tracing::Level::DEBUG, name = "parse_program_table", skip(document))]
     pub fn from_document(document: &Html) -> Result<Self, SsuPathPluginError> {
         let title = document
             .select(&PROGRAM_TITLE_SELECTOR)
@@ -70,6 +71,7 @@ static WEEK_TABLES_SELECTOR: LazyLock<Selector> = LazyLock::new(|| {
 });
 
 impl SsuPathCourseTable {
+    #[tracing::instrument(level=tracing::Level::DEBUG, name = "parse_course_table", skip(document))]
     pub fn from_document(document: &Html) -> Result<Self, SsuPathPluginError> {
         let overview_elem =
             document
@@ -86,6 +88,7 @@ impl SsuPathCourseTable {
         Ok(Self { overview, weeks })
     }
 
+    #[tracing::instrument(level=tracing::Level::DEBUG, name = "parse_week_table", skip(table))]
     fn parse_week_table(
         table: ElementRef,
     ) -> Result<(WeekName, BTreeMap<String, String>), SsuPathPluginError> {
@@ -144,103 +147,122 @@ fn parse_table(table: ElementRef) -> Result<BTreeMap<String, String>, SsuPathPlu
 static DIVISION_TABLE_SELECTOR: LazyLock<Selector> =
     LazyLock::new(|| Selector::parse("form[name='viewForm'] .table_wrap table").unwrap());
 
+static DIVISION_TABLE_HEADER_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("thead > tr > th").unwrap());
+
+static DIVISION_TABLE_ROWS_SELECTOR: LazyLock<Selector> =
+    LazyLock::new(|| Selector::parse("tbody > tr").unwrap());
+
 pub struct SsuPathDivisionTable {
     pub headers: Vec<String>,
     pub rows: Vec<SsuPathDivisionTableRow>,
 }
 
 impl SsuPathDivisionTable {
+    #[tracing::instrument(level=tracing::Level::DEBUG, name = "parse_division_table", skip(document))]
     pub fn from_document(document: &Html) -> Result<Self, SsuPathPluginError> {
-        let mut table_childs = document
+        let table = document
             .select(&DIVISION_TABLE_SELECTOR)
             .next()
             .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
                 "Cannot find division table of content".to_string(),
-            )))?
-            .child_elements()
-            .skip(1);
-        let mut headers = table_childs
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse division table header".to_string(),
-            )))?
-            .child_elements()
+            )))?;
+        let headers = table
+            .select(&DIVISION_TABLE_HEADER_SELECTOR)
             .map(|e| e.to_string(""))
             .collect::<Vec<_>>();
-        headers.pop();
-        let headers = headers;
-        let rows = table_childs
-            .next()
-            .ok_or(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse division table rows".to_string(),
-            )))?
-            .child_elements()
-            .map(SsuPathDivisionTableRow::from_elem)
+        let rows = table
+            .select(&DIVISION_TABLE_ROWS_SELECTOR)
+            .map(|elem| SsuPathDivisionTableRow::from_elem(headers.clone(), elem))
             .collect::<Result<Vec<_>, SsuPathPluginError>>()?;
         Ok(Self { headers, rows })
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct SsuPathDivisionTableRow {
-    #[serde(rename = "번호")]
+    #[serde(rename = "번호", deserialize_with = "deserialize_string_to_u32")]
     pub order: u32,
     #[serde(rename = "분반명")]
     pub name: String,
-    #[serde(rename = "신청기간", serialize_with = "serialize_date_range")]
+    #[serde(
+        rename = "신청기간",
+        serialize_with = "serialize_date_range",
+        deserialize_with = "deserialize_date_range"
+    )]
     pub apply_duration: (OffsetDateTime, OffsetDateTime),
-    #[serde(rename = "모집정원")]
+    #[serde(
+        rename = "운영기간",
+        serialize_with = "serialize_date_range",
+        deserialize_with = "deserialize_date_range"
+    )]
+    pub operate_duration: (OffsetDateTime, OffsetDateTime),
+    #[serde(rename = "모집정원", deserialize_with = "deserialize_string_to_u32")]
     pub total: u32,
-    #[serde(rename = "대기정원")]
+    #[serde(rename = "대기정원", deserialize_with = "deserialize_string_to_u32")]
     pub awaiter: u32,
-    #[serde(rename = "신청인원")]
+    #[serde(rename = "신청인원", deserialize_with = "deserialize_string_to_u32")]
     pub applier: u32,
-    #[serde(rename = "대기신청인원")]
+    #[serde(
+        rename = "대기신청인원",
+        deserialize_with = "deserialize_string_to_u32"
+    )]
     pub await_applier: u32,
 }
 
+fn deserialize_string_to_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    s.trim().parse::<u32>().map_err(serde::de::Error::custom)
+}
+
+fn deserialize_date_range<'de, D>(
+    deserializer: D,
+) -> Result<(OffsetDateTime, OffsetDateTime), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    s.parse_date_range()
+        .map_err(|e| serde::de::Error::custom(format!("Cannot parse date range: {:?}", e)))
+}
+
 impl SsuPathDivisionTableRow {
-    pub fn from_elem(elem: ElementRef) -> Result<Self, SsuPathPluginError> {
+    #[tracing::instrument(level=tracing::Level::DEBUG, name = "parse_division_table_row", skip(elem))]
+    pub fn from_elem(headers: Vec<String>, elem: ElementRef) -> Result<Self, SsuPathPluginError> {
+        tracing::debug!("Parsing division table row: {}", elem.inner_html());
         let columns = elem
             .child_elements()
             .map(|e| e.to_string(""))
             .collect::<Vec<_>>();
-        if columns.len() != 8 {
+
+        if columns.len() != headers.len() {
             return Err(SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(
-                "Cannot parse division table row".to_string(),
+                format!(
+                    "Cannot parse division table row, incorrect number of columns: expected {}, got {}",
+                    headers.len(),
+                    columns.len()
+                ),
             )));
         }
-        let mut columns = columns.into_iter();
-        let order = columns
-            .next()
-            .ok_and_parse_u32("Cannot parse order".to_string())?;
-        let name = columns
-            .next()
-            .ok_or_parse_err("Cannot parse name".to_string())?;
-        let apply_duration = columns
-            .next()
-            .ok_or_parse_err("Cannot parse apply duration".to_string())?
-            .parse_date_range()?;
-        let total = columns
-            .next()
-            .ok_and_parse_u32("Cannot parse total".to_string())?;
-        let awaiter = columns
-            .next()
-            .ok_and_parse_u32("Cannot parse awaiter".to_string())?;
-        let applier = columns
-            .next()
-            .ok_and_parse_u32("Cannot parse applier".to_string())?;
-        let await_applier = columns
-            .next()
-            .ok_and_parse_u32("Cannot parse await_applier".to_string())?;
-        Ok(Self {
-            order,
-            name,
-            apply_duration,
-            total,
-            awaiter,
-            applier,
-            await_applier,
+
+        let map: BTreeMap<String, String> = headers.into_iter().zip(columns.into_iter()).collect();
+
+        // BTreeMap을 serde_json::Value로 변환 후 deserialize
+        let value = serde_json::to_value(&map).map_err(|e| {
+            SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(format!(
+                "Cannot serialize map to value: {}",
+                e
+            )))
+        })?;
+
+        serde_json::from_value(value).map_err(|e| {
+            SsuPathPluginError(PluginError::parse::<SsuPathPlugin>(format!(
+                "Cannot deserialize value to SsuPathDivisionTableRow: {}",
+                e
+            )))
         })
     }
 }
