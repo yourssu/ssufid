@@ -33,7 +33,6 @@ ssufid_mediamba = { workspace = true }
 ssufid_ssucatch = { workspace = true }
 ssufid_ssudorm = { workspace = true }
 ssufid_ssupath = { workspace = true }
-ssufid_lifelongedu = { workspace = true }
 ssufid_chemeng = { workspace = true }
 ssufid_ee = { workspace = true }
 ssufid_oasis = { workspace = true }
@@ -42,7 +41,6 @@ ssufid_materials = { workspace = true }
 ssufid_ssfilm = { workspace = true }
 ssufid_stu = { workspace = true }
 ssufid_study = { workspace = true }
-ssufid_lawyer = { workspace = true }
 
 [dev-dependencies]
 time = { version = "0.3.40", features = ["macros"] }

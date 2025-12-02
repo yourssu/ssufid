@@ -195,7 +195,7 @@ pub mod history {
         "history.ssu.ac.kr",
         "숭실대학교 사학과 공지사항",
         "숭실대학교 사학과 홈페이지의 공지사항을 제공합니다.",
-        "https://history.ssu.ac.kr/%ed%95%99%ea%b3%bc%ec%86%8c%ec%8b%9d/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad"
+        "https://history.ssu.ac.kr/%ED%95%99%EA%B3%BC%EC%86%8C%EC%8B%9D/%ED%95%99%EA%B3%BC%EA%B3%B5%EC%A7%80"
     );
 }
 pub use history::HistoryPlugin;
@@ -266,6 +266,30 @@ pub mod law {
     );
 }
 pub use law::LawPlugin;
+
+pub mod lawyer {
+    crate::wordpress_plugin!(
+        LawyerPlugin,
+        "lawyer.ssu.ac.kr",
+        "숭실대학교 국제법무학과 공지사항",
+        "숭실대학교 국제법무학과 홈페이지의 공지사항을 제공합니다.",
+        "https://lawyer.ssu.ac.kr/%ED%95%99%EA%B3%BC-%EC%86%8C%EC%8B%9D/%ED%95%99%EA%B3%BC-%EA%B3%B5%EC%A7%80/"
+    );
+}
+
+pub use lawyer::LawyerPlugin;
+
+pub mod lifelongedu {
+    crate::wordpress_plugin!(
+        LifelongEduPlugin,
+        "lifelongedu.ssu.ac.kr",
+        "숭실대학교 평생교육학과 공지사항",
+        "숭실대학교 평생교육학과 홈페이지의 공지사항을 제공합니다.",
+        "https://lifelongedu.ssu.ac.kr/%ED%95%99%EA%B3%BC%EC%82%AC%EB%AC%B4%EC%8B%A4%EC%95%8C%EB%A6%BC/%EA%B3%B5%EC%A7%80%EC%82%AC%ED%95%AD"
+    );
+}
+
+pub use lifelongedu::LifelongEduPlugin;
 
 pub mod masscom {
     use crate::common::wordpress::{
@@ -463,6 +487,7 @@ crate::test_sites! {
     test_crawl_japanstu(JapanstuPlugin),
     test_crawl_korlan(KorlanPlugin),
     test_crawl_law(LawPlugin),
+    test_crawl_lifelongedu(LifelongEduPlugin),
     test_crawl_masscom(MasscomPlugin),
     test_crawl_math(MathPlugin),
     test_crawl_mgmt(MgmtPlugin),
