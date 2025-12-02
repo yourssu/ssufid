@@ -124,12 +124,6 @@ jobs:
         run: |
           curl -F $"blocks=$SLACK_MESSAGE" -F "channel=${{ secrets.SLACK_CHANNEL_ID }}" -H "Authorization: Bearer ${{ secrets.SLACK_WORKSPACE_TOKEN }}" https://slack.com/api/chat.postMessage
 
-      - name: Archive artifacts
-        if: ${{ !inputs.dry-run && always() }}
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ssufid/out/
-
       - name: Update data and cache
         if: ${{ !inputs.dry-run && (success() || failure()) }}
         run: |
@@ -147,7 +141,3 @@ jobs:
           git config user.email ""
           git add .
           (git commit -m "update: $(date +'%Y-%m-%d %H:%M')" && git push) || echo "no changes to commit"
-
-      - name: Deploy to GitHub Pages
-        if: ${{ !inputs.dry-run && (success() || failure()) }}
-        uses: actions/deploy-pages@v4
