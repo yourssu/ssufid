@@ -90,9 +90,7 @@ impl EePlugin {
             .text()
             .await
             .map_err(|e| {
-                PluginError::request::<Self>(format!(
-                    "Failed to get text from response {url}: {e}"
-                ))
+                PluginError::request::<Self>(format!("Failed to get text from response {url}: {e}"))
             })
     }
 
@@ -187,8 +185,8 @@ impl SsufidPlugin for EePlugin {
                 let mut items_to_fetch_current_page = Vec::new();
                 for item_el in list_doc.select(&self.selectors.post_item) {
                     let notice = item_el.attr("class").is_some_and(|c| c.contains("label"));
-                    if let Some(link_el) = item_el.select(&self.selectors.post_link).next() {
-                        if let Some(href) = link_el.value().attr("href") {
+                    if let Some(link_el) = item_el.select(&self.selectors.post_link).next()
+                        && let Some(href) = link_el.value().attr("href") {
                             let title_on_list =
                                 link_el.text().collect::<String>().trim().to_string();
                             if !title_on_list.is_empty() {
@@ -199,7 +197,6 @@ impl SsufidPlugin for EePlugin {
                                 });
                             }
                         }
-                    }
                 }
                 let has_next_page_current = list_doc
                     .select(&self.selectors.next_page_link)

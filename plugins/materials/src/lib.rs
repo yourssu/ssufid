@@ -448,10 +448,7 @@ mod tests {
         );
 
         for item in &metadata {
-            assert!(
-                !item.id.is_empty(),
-                "Post ID should not be empty: {item:?}"
-            );
+            assert!(!item.id.is_empty(), "Post ID should not be empty: {item:?}");
             assert!(
                 item.url.starts_with(BASE_URL_HOST_ONLY),
                 "Post URL ('{}') should be absolute, starting with '{}': {:?}",
