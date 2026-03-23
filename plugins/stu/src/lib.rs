@@ -18,8 +18,11 @@ impl StuPlugin {
     const MEMBER_CODE: &'static str = "";
 
     async fn list_posts(base_url: &str, posts_limit: u32) -> Result<Vec<StuPost>, PluginError> {
-        let mut url = Url::parse(&format!("{base_url}/board/{}/posts/search", Self::BOARD_NAME))
-            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
+        let mut url = Url::parse(&format!(
+            "{base_url}/board/{}/posts/search",
+            Self::BOARD_NAME
+        ))
+        .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
         url.query_pairs_mut()
             .append_pair("page", "0")
             .append_pair("take", &posts_limit.to_string())
