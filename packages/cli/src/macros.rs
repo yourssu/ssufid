@@ -14,10 +14,10 @@ macro_rules! register_plugins {
                 core: Arc<ssufid::SsufidCore>,
                 out_dir: &Path,
                 posts_limit: u32,
-                calendar_limit_days: u32,
+                calendar_range: ssufid::core::CalendarCrawlRange,
                 retry_count: u32,
             ) -> eyre::Result<()> {
-                let _ = calendar_limit_days;
+                let _ = &calendar_range;
                 match self {
                     $(Self::$post_id(plugin) => {
                         crate::save_run(core, out_dir, plugin, posts_limit, retry_count).await
@@ -27,7 +27,7 @@ macro_rules! register_plugins {
                             core,
                             out_dir,
                             plugin,
-                            calendar_limit_days,
+                            calendar_range,
                             retry_count,
                         ).await
                     },)*
@@ -39,6 +39,7 @@ macro_rules! register_plugins {
             core: Arc<SsufidCore>,
             out_dir: &Path,
             options: SsufidDaemonOptions,
+            calendar_range: ssufid::core::CalendarCrawlRange,
         ) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
             let include: Option<HashSet<String>> = options
                 .include
@@ -73,7 +74,7 @@ macro_rules! register_plugins {
                             core.clone(),
                             out_dir,
                             options.posts_limit,
-                            options.calendar_limit_days,
+                            calendar_range.clone(),
                             options.retry_count,
                         ))
                     })
@@ -86,7 +87,7 @@ macro_rules! register_plugins {
                             core.clone(),
                             out_dir,
                             options.posts_limit,
-                            options.calendar_limit_days,
+                            calendar_range.clone(),
                             options.retry_count,
                         ))
                     })
@@ -99,7 +100,7 @@ macro_rules! register_plugins {
                             core.clone(),
                             out_dir,
                             options.posts_limit,
-                            options.calendar_limit_days,
+                            calendar_range.clone(),
                             options.retry_count,
                         )
                     })

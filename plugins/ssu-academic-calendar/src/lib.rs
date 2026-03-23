@@ -4,7 +4,7 @@ use reqwest::Client;
 use scraper::{ElementRef, Html, Selector};
 use ssufid::{
     PluginError,
-    core::{SsufidCalendar, SsufidCalendarPlugin, SsufidPlugin},
+    core::{CalendarCrawlRange, SsufidCalendar, SsufidCalendarPlugin, SsufidPlugin},
 };
 use time::{Date, Month, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset, macros::offset};
 use url::Url;
@@ -38,13 +38,15 @@ impl SsufidPlugin for SsuAcademicCalendarPlugin {
 }
 
 impl SsufidCalendarPlugin for SsuAcademicCalendarPlugin {
-    async fn crawl(&self, calendar_limit_days: u32) -> Result<Vec<SsufidCalendar>, PluginError> {
+    async fn crawl(
+        &self,
+        calendar_range: &CalendarCrawlRange,
+    ) -> Result<Vec<SsufidCalendar>, PluginError> {
         let client = Client::builder()
             .user_agent(USER_AGENT)
             .build()
             .map_err(|e| PluginError::request::<Self>(format!("Failed to build client: {e}")))?;
-        let now = OffsetDateTime::now_utc().to_offset(KST);
-        let target_years = Self::target_years(calendar_limit_days, now);
+        let target_years = Self::target_years(calendar_range);
         let mut events = BTreeMap::new();
 
         for year in target_years {
@@ -63,18 +65,9 @@ impl SsufidCalendarPlugin for SsuAcademicCalendarPlugin {
 }
 
 impl SsuAcademicCalendarPlugin {
-    fn target_years(calendar_limit_days: u32, now: OffsetDateTime) -> Vec<i32> {
-        let current_year = now.year();
-        let start_year = if calendar_limit_days == 0 {
-            current_year - 1
-        } else {
-            (now - time::Duration::days(calendar_limit_days as i64)).year()
-        };
-        let end_year = if calendar_limit_days == 0 || now.month() == Month::December {
-            current_year + 1
-        } else {
-            current_year
-        };
+    fn target_years(calendar_range: &CalendarCrawlRange) -> Vec<i32> {
+        let start_year = calendar_range.start().to_offset(KST).year();
+        let end_year = calendar_range.end().to_offset(KST).year();
 
         (start_year..=end_year).collect()
     }
@@ -521,28 +514,40 @@ mod tests {
     }
 
     #[test]
-    fn test_target_years_with_limit_zero() {
-        let now = datetime!(2026-03-23 12:00:00 +09:00);
-        assert_eq!(
-            SsuAcademicCalendarPlugin::target_years(0, now),
-            vec![2025, 2026, 2027]
-        );
+    fn test_target_years_for_single_year_range() {
+        let range = CalendarCrawlRange::new(
+            datetime!(2026-03-01 00:00:00 +09:00),
+            datetime!(2026-03-31 23:59:59 +09:00),
+        )
+        .unwrap();
+
+        assert_eq!(SsuAcademicCalendarPlugin::target_years(&range), vec![2026]);
     }
 
     #[test]
-    fn test_target_years_with_limit_crosses_previous_year() {
-        let now = datetime!(2026-01-03 12:00:00 +09:00);
+    fn test_target_years_crosses_previous_year() {
+        let range = CalendarCrawlRange::new(
+            datetime!(2025-12-20 00:00:00 +09:00),
+            datetime!(2026-01-10 23:59:59 +09:00),
+        )
+        .unwrap();
+
         assert_eq!(
-            SsuAcademicCalendarPlugin::target_years(30, now),
+            SsuAcademicCalendarPlugin::target_years(&range),
             vec![2025, 2026]
         );
     }
 
     #[test]
-    fn test_target_years_in_december_includes_next_year() {
-        let now = datetime!(2026-12-15 12:00:00 +09:00);
+    fn test_target_years_crosses_next_year() {
+        let range = CalendarCrawlRange::new(
+            datetime!(2026-12-15 00:00:00 +09:00),
+            datetime!(2027-01-05 23:59:59 +09:00),
+        )
+        .unwrap();
+
         assert_eq!(
-            SsuAcademicCalendarPlugin::target_years(30, now),
+            SsuAcademicCalendarPlugin::target_years(&range),
             vec![2026, 2027]
         );
     }
@@ -551,7 +556,12 @@ mod tests {
     #[ignore = "Requires network access to ssu.ac.kr"]
     async fn test_live_crawl() {
         let plugin = SsuAcademicCalendarPlugin;
-        let items = plugin.crawl(30).await.unwrap();
+        let range = CalendarCrawlRange::new(
+            datetime!(2026-01-01 00:00:00 +09:00),
+            datetime!(2026-12-31 23:59:59 +09:00),
+        )
+        .unwrap();
+        let items = plugin.crawl(&range).await.unwrap();
 
         assert!(!items.is_empty());
         assert!(items.iter().all(|item| !item.id.is_empty()));

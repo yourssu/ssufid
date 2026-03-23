@@ -1,4 +1,33 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CalendarCrawlRange {
+    start: OffsetDateTime,
+    end: OffsetDateTime,
+}
+
+impl CalendarCrawlRange {
+    pub fn new(start: OffsetDateTime, end: OffsetDateTime) -> Result<Self, &'static str> {
+        if start > end {
+            return Err("calendar crawl range start must be before or equal to end");
+        }
+
+        Ok(Self { start, end })
+    }
+
+    pub fn start(&self) -> OffsetDateTime {
+        self.start
+    }
+
+    pub fn end(&self) -> OffsetDateTime {
+        self.end
+    }
+
+    pub fn contains_start(&self, starts_at: OffsetDateTime) -> bool {
+        self.start <= starts_at && starts_at <= self.end
+    }
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct SsufidCalendar {
