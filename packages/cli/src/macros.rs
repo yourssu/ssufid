@@ -13,6 +13,7 @@ macro_rules! register_plugins {
                 self,
                 core: Arc<ssufid::SsufidCore>,
                 out_dir: &Path,
+                calendar_out_dir: &Path,
                 posts_limit: u32,
                 calendar_range: ssufid::core::CalendarCrawlRange,
                 retry_count: u32,
@@ -25,7 +26,7 @@ macro_rules! register_plugins {
                     $(Self::$calendar_id(plugin) => {
                         crate::save_calendar_run(
                             core,
-                            out_dir,
+                            calendar_out_dir,
                             plugin,
                             calendar_range,
                             retry_count,
@@ -38,6 +39,7 @@ macro_rules! register_plugins {
         fn construct_tasks(
             core: Arc<SsufidCore>,
             out_dir: &Path,
+            calendar_out_dir: &Path,
             options: SsufidDaemonOptions,
             calendar_range: ssufid::core::CalendarCrawlRange,
         ) -> Vec<impl std::future::Future<Output = eyre::Result<()>>> {
@@ -73,6 +75,7 @@ macro_rules! register_plugins {
                         include.contains(id).then_some(task.save_run(
                             core.clone(),
                             out_dir,
+                            calendar_out_dir,
                             options.posts_limit,
                             calendar_range.clone(),
                             options.retry_count,
@@ -86,6 +89,7 @@ macro_rules! register_plugins {
                         exclude.contains(id).not().then_some(task.save_run(
                             core.clone(),
                             out_dir,
+                            calendar_out_dir,
                             options.posts_limit,
                             calendar_range.clone(),
                             options.retry_count,
@@ -99,6 +103,7 @@ macro_rules! register_plugins {
                         task.save_run(
                             core.clone(),
                             out_dir,
+                            calendar_out_dir,
                             options.posts_limit,
                             calendar_range.clone(),
                             options.retry_count,
