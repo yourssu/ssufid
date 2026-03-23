@@ -2,7 +2,7 @@ use std::{collections::HashSet, fs::File, io::BufWriter, ops::Not, path::Path, s
 
 use clap::Parser;
 use futures::future::join_all;
-use ssufid::core::{SsufidCore, SsufidPlugin};
+use ssufid::core::{SsufidCalendarPlugin, SsufidCore, SsufidPlugin, SsufidPostPlugin};
 use ssufid_biz::BizPlugin;
 use ssufid_chemeng::ChemEngPlugin;
 use ssufid_common::sites::*;
@@ -51,6 +51,10 @@ struct SsufidDaemonOptions {
     #[arg(short = 'l', long = "limit", default_value_t = SsufidCore::POST_COUNT_LIMIT)]
     posts_limit: u32,
 
+    /// Include calendar events whose start time is within the last N days. Use 0 for no date limit.
+    #[arg(long = "calendar-limit-days", default_value_t = SsufidCore::CALENDAR_DAY_LIMIT)]
+    calendar_limit_days: u32,
+
     /// The sites to include in the fetch. By default, all sites are included.
     /// This will override the default sites.
     #[arg(short = 'i', long, value_delimiter = ',')]
@@ -98,6 +102,7 @@ async fn main() -> eyre::Result<()> {
 }
 
 register_plugins! {
+    post: {
     Accounting(AccountingPlugin) => AccountingPlugin::new(),
     Actx(ActxPlugin) => ActxPlugin::new(),
     Biz(BizPlugin) => BizPlugin::new(),
@@ -154,9 +159,11 @@ register_plugins! {
     Sports(SportsPlugin) => SportsPlugin::new(),
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
+    },
+    calendar: {}
 }
 
-pub(crate) async fn save_run<T: SsufidPlugin>(
+pub(crate) async fn save_run<T: SsufidPostPlugin>(
     core: Arc<SsufidCore>,
     base_out_dir: &Path,
     plugin: T,
@@ -168,7 +175,6 @@ pub(crate) async fn save_run<T: SsufidPlugin>(
         .await?;
     let json = serde_json::to_string_pretty(&site)?;
 
-    // Use synchronous BufWriter to write pretty xml string.
     let buf = site
         .to_rss()
         .pretty_write_to(BufWriter::new(Vec::new()), b' ', 2)?;
@@ -182,6 +188,31 @@ pub(crate) async fn save_run<T: SsufidPlugin>(
 
     let mut rss_file = tokio::fs::File::create(out_dir.join("rss.xml")).await?;
     rss_file.write_all(rss.as_bytes()).await?;
+    Ok(())
+}
+
+#[allow(dead_code)]
+pub(crate) async fn save_calendar_run<T: SsufidCalendarPlugin>(
+    core: Arc<SsufidCore>,
+    base_out_dir: &Path,
+    plugin: T,
+    calendar_limit_days: u32,
+    retry_count: u32,
+) -> eyre::Result<()> {
+    let site = core
+        .run_calendar_with_retry(&plugin, calendar_limit_days, retry_count)
+        .await?;
+    let json = serde_json::to_string_pretty(&site)?;
+    let ics = site.to_ics();
+
+    let out_dir = base_out_dir.join(T::IDENTIFIER);
+    tokio::fs::create_dir_all(&out_dir).await?;
+
+    let mut json_file = tokio::fs::File::create(out_dir.join("data.json")).await?;
+    json_file.write_all(json.as_bytes()).await?;
+
+    let mut ics_file = tokio::fs::File::create(out_dir.join("calendar.ics")).await?;
+    ics_file.write_all(ics.as_bytes()).await?;
     Ok(())
 }
 

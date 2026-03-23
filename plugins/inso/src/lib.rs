@@ -10,7 +10,7 @@ use url::Url; // Added OffsetDateTime
 
 // Use actual package name 'ssufid' and correct module path
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 
@@ -270,7 +270,9 @@ impl SsufidPlugin for InsoPlugin {
     const TITLE: &'static str = "정보사회학과 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 정보사회학과 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://inso.ssu.ac.kr/sub/sub04_01.php";
+}
 
+impl SsufidPostPlugin for InsoPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         if posts_limit == 0 {
             tracing::debug!("posts_limit is 0, returning empty vector.");

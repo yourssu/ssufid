@@ -8,8 +8,9 @@ authors.workspace = true
 
 
 [features]
-default = ['rss']
+default = ['rss', 'ics']
 rss = ['dep:rss']
+ics = []
 
 [dependencies]
 reqwest = { workspace = true, features = [

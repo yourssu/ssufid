@@ -22,7 +22,9 @@ macro_rules! gnuboard_plugin {
             const TITLE: &'static str = $title;
             const DESCRIPTION: &'static str = $description;
             const BASE_URL: &'static str = $base_url;
+        }
 
+        impl ssufid::core::SsufidPostPlugin for $name {
             async fn crawl(
                 &self,
                 posts_limit: u32,
@@ -86,7 +88,9 @@ macro_rules! wordpress_plugin {
             const TITLE: &'static str = $title;
             const DESCRIPTION: &'static str = $description;
             const BASE_URL: &'static str = $base_url;
+        }
 
+        impl ssufid::core::SsufidPostPlugin for $name {
             async fn crawl(
                 &self,
                 posts_limit: u32,
@@ -116,7 +120,7 @@ macro_rules! test_sites {
         #[cfg(test)]
         mod tests {
             use super::*;
-            use ssufid::core::SsufidPlugin;
+            use ssufid::core::{SsufidPlugin, SsufidPostPlugin};
 
             $(
                 #[tokio::test]

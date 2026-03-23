@@ -2,7 +2,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use ssufid::{
     PluginError,
-    core::{SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use time::{
     OffsetDateTime, PrimitiveDateTime,
@@ -47,7 +47,9 @@ impl SsufidPlugin for StuPlugin {
     const TITLE: &'static str = "숭실대학교 총학생회";
     const DESCRIPTION: &'static str = "숭실대학교 총학생회 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://stu.ssu.ac.kr/notice";
+}
 
+impl SsufidPostPlugin for StuPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

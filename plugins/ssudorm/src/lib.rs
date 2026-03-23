@@ -3,7 +3,7 @@ use encoding_rs::EUC_KR;
 use futures::TryStreamExt as _;
 use futures::stream::FuturesOrdered;
 use scraper::{Html, Selector};
-use ssufid::core::{SsufidPlugin, SsufidPost};
+use ssufid::core::{SsufidPlugin, SsufidPost, SsufidPostPlugin};
 use ssufid::error::PluginError;
 use thiserror::Error;
 use time::format_description::BorrowedFormatItem;
@@ -308,7 +308,9 @@ impl SsufidPlugin for SsuDormPlugin {
     const DESCRIPTION: &'static str = "숭실대학교 기숙사 홈페이지의 공지사항을 제공합니다.";
     // Base URL for resolving relative links if necessary
     const BASE_URL: &'static str = "https://ssudorm.ssu.ac.kr:444/SShostel/mall_main.php?viewform=B0001_noticeboard_list&board_no=1";
+}
 
+impl SsufidPostPlugin for SsuDormPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         tracing::info!(message = "Crawling started", posts_limit);
         self.all_posts_metadata(posts_limit)

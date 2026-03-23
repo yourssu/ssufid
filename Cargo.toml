@@ -34,7 +34,7 @@ tracing = "0.1.41"
 mime_guess = "2.0.5"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
-ssufid = { path = "packages/ssufid", features = ["rss"] }
+ssufid = { path = "packages/ssufid", features = ["rss", "ics"] }
 
 ssufid_biz = { path = "plugins/biz" }
 ssufid_common = { path = "plugins/common" }
