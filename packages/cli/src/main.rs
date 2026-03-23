@@ -24,7 +24,7 @@ use ssufid_startup::StartupPlugin;
 use ssufid_stu::StuPlugin;
 use ssufid_study::StudyPlugin;
 use time::{
-    Date, Duration, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset,
+    Date, Month, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset,
     macros::{format_description, offset},
 };
 use tokio::io::AsyncWriteExt;
@@ -267,9 +267,11 @@ fn calendar_crawl_range_from_options(
 
 fn default_calendar_crawl_range() -> eyre::Result<CalendarCrawlRange> {
     let now = OffsetDateTime::now_utc().to_offset(kst_offset());
-    let start_date = now.date() - Duration::days(SsufidCore::CALENDAR_DAY_LIMIT as i64);
+    let year = now.year();
+    let start_date = Date::from_calendar_date(year, Month::January, 1)?;
+    let end_date = Date::from_calendar_date(year + 1, Month::December, 31)?;
     let start = PrimitiveDateTime::new(start_date, Time::MIDNIGHT).assume_offset(kst_offset());
-    let end = PrimitiveDateTime::new(now.date(), end_of_day()).assume_offset(kst_offset());
+    let end = PrimitiveDateTime::new(end_date, end_of_day()).assume_offset(kst_offset());
 
     CalendarCrawlRange::new(start, end).map_err(eyre::Error::msg)
 }
