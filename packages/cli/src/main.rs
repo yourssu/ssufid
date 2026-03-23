@@ -46,6 +46,10 @@ struct SsufidDaemonOptions {
     #[arg(short = 'o', long = "out", default_value = "./out")]
     out_dir: String,
 
+    /// The output directory for calendar data.
+    #[arg(long = "calendar-out", default_value = "./out/calendar")]
+    calendar_out_dir: String,
+
     /// The cache directory for the fetched data.
     #[arg(long = "cache", default_value = "./.cache")]
     cache_dir: String,
@@ -89,10 +93,17 @@ async fn main() -> eyre::Result<()> {
 
     let calendar_range = calendar_crawl_range_from_options(&options)?;
     let out_dir = Path::new(&options.out_dir).to_owned();
+    let calendar_out_dir = Path::new(&options.calendar_out_dir).to_owned();
 
     let core = Arc::new(SsufidCore::new(&options.cache_dir));
 
-    let tasks = construct_tasks(core.clone(), &out_dir, options, calendar_range);
+    let tasks = construct_tasks(
+        core.clone(),
+        &out_dir,
+        &calendar_out_dir,
+        options,
+        calendar_range,
+    );
     let tasks_len = tasks.len();
 
     // Run all tasks and collect errors
