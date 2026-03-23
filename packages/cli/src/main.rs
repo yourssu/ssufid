@@ -14,6 +14,7 @@ use ssufid_media::MediaPlugin;
 use ssufid_mediamba::MediambaPlugin;
 use ssufid_oasis::OasisPlugin;
 use ssufid_ssfilm::SsfilmPlugin;
+use ssufid_ssu_academic_calendar::SsuAcademicCalendarPlugin;
 use ssufid_ssucatch::SsuCatchPlugin;
 use ssufid_ssudorm::SsuDormPlugin;
 use ssufid_ssupath::{SsuPathCredential, SsuPathPlugin};
@@ -160,7 +161,9 @@ register_plugins! {
     SwBachelor(SwBachelorPlugin) => SwBachelorPlugin::new(),
     SwGraduate(SwGraduatePlugin) => SwGraduatePlugin::new(),
     },
-    calendar: {}
+    calendar: {
+    SsuAcademicCalendar(SsuAcademicCalendarPlugin) => SsuAcademicCalendarPlugin,
+    }
 }
 
 pub(crate) async fn save_run<T: SsufidPostPlugin>(

@@ -2100,6 +2100,7 @@ dependencies = [
  "ssufid_mediamba",
  "ssufid_oasis",
  "ssufid_ssfilm",
+ "ssufid_ssu_academic_calendar",
  "ssufid_ssucatch",
  "ssufid_ssudorm",
  "ssufid_ssupath",
@@ -2271,6 +2272,19 @@ dependencies = [
  "serde_json",
  "ssufid",
  "thiserror",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "ssufid_ssu_academic_calendar"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "scraper",
+ "ssufid",
  "time",
  "tokio",
  "tracing",
