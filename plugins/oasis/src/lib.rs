@@ -2,7 +2,7 @@ use futures::{TryStreamExt, stream::FuturesOrdered};
 use serde::Deserialize;
 use ssufid::{
     PluginError,
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use time::{
     OffsetDateTime, PrimitiveDateTime,
@@ -50,7 +50,9 @@ impl SsufidPlugin for OasisPlugin {
     const TITLE: &'static str = "숭실대학교 도서관";
     const DESCRIPTION: &'static str = "숭실대학교 도서관 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://oasis.ssu.ac.kr/library-services/bulletin/notice";
+}
 
+impl SsufidPostPlugin for OasisPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

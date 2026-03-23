@@ -1,7 +1,7 @@
 use reqwest::Client;
 use scraper::{Html, Selector};
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use time::{Date, OffsetDateTime, PrimitiveDateTime, Time, UtcOffset, macros::format_description};
@@ -153,7 +153,9 @@ impl SsufidPlugin for EePlugin {
     const TITLE: &'static str = "숭실대학교 전기공학부";
     const DESCRIPTION: &'static str = "숭실대학교 전기공학부 학부소식 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://ee.ssu.ac.kr/sub/sub05_02.php";
+}
 
+impl SsufidPostPlugin for EePlugin {
     // Kept `async fn` but without #[async_trait]
     // This requires the compiler to handle `async fn` in traits implicitly,
     // or match it with `impl Future` if the signatures are compatible.
@@ -186,17 +188,17 @@ impl SsufidPlugin for EePlugin {
                 for item_el in list_doc.select(&self.selectors.post_item) {
                     let notice = item_el.attr("class").is_some_and(|c| c.contains("label"));
                     if let Some(link_el) = item_el.select(&self.selectors.post_link).next()
-                        && let Some(href) = link_el.value().attr("href") {
-                            let title_on_list =
-                                link_el.text().collect::<String>().trim().to_string();
-                            if !title_on_list.is_empty() {
-                                items_to_fetch_current_page.push(PostListItemInfo {
-                                    notice,
-                                    relative_url: href.trim().to_string(),
-                                    title_on_list,
-                                });
-                            }
+                        && let Some(href) = link_el.value().attr("href")
+                    {
+                        let title_on_list = link_el.text().collect::<String>().trim().to_string();
+                        if !title_on_list.is_empty() {
+                            items_to_fetch_current_page.push(PostListItemInfo {
+                                notice,
+                                relative_url: href.trim().to_string(),
+                                title_on_list,
+                            });
                         }
+                    }
                 }
                 let has_next_page_current = list_doc
                     .select(&self.selectors.next_page_link)

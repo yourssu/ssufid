@@ -2,7 +2,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use ssufid::{
     PluginError,
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use time::{
     OffsetDateTime, PrimitiveDateTime,
@@ -40,7 +40,9 @@ impl SsufidPlugin for StartupPlugin {
     const TITLE: &'static str = "숭실대학교 창업포털";
     const DESCRIPTION: &'static str = "숭실대학교 창업포털 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://startup.ssu.ac.kr/board/notice";
+}
 
+impl SsufidPostPlugin for StartupPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

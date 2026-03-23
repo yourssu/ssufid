@@ -1,7 +1,7 @@
 use futures::{TryStreamExt as _, stream::FuturesOrdered};
 use scraper::{Html, Selector};
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use thiserror::Error;
@@ -269,7 +269,9 @@ impl SsufidPlugin for MePlugin {
     const TITLE: &'static str = "숭실대학교 기계공학부";
     const DESCRIPTION: &'static str = "숭실대학교 기계공학부 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://me.ssu.ac.kr/notice/notice01.php";
+}
 
+impl SsufidPostPlugin for MePlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let mut temp_posts_data = Vec::new();
         let mut page_num = 1;

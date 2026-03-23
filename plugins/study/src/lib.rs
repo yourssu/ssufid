@@ -8,7 +8,7 @@ use reqwest::header::{CONTENT_TYPE, REFERER};
 use scraper::Selector;
 use ssufid::{
     PluginError,
-    core::{SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use url::Url;
 
@@ -160,7 +160,9 @@ impl SsufidPlugin for StudyPlugin {
     const TITLE: &'static str = "숭실대학교 국제처";
     const DESCRIPTION: &'static str = "숭실대학교 국제처 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://study.ssu.ac.kr/community/notice_list.do";
+}
 
+impl SsufidPostPlugin for StudyPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

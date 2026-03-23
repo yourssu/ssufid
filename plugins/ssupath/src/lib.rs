@@ -12,7 +12,7 @@ use utils::default_header;
 
 use ssufid::{
     PluginError,
-    core::{SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 
 pub mod model;
@@ -138,7 +138,9 @@ impl SsufidPlugin for SsuPathPlugin {
         "숭실대학교 비교과 시스템 SSU-PATH의 비교과 프로그램 정보를 제공합니다.";
     const BASE_URL: &'static str =
         "https://path.ssu.ac.kr/ptfol/imng/icmpNsbjtPgm/findIcmpNsbjtPgmList.do";
+}
 
+impl SsufidPostPlugin for SsuPathPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         tracing::info!("Crawling with {} posts limit", posts_limit);
         let pages = (posts_limit as usize).div_ceil(ENTRIES_PER_PAGE);

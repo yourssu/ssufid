@@ -4,7 +4,7 @@ use futures::{TryStreamExt, stream::FuturesOrdered};
 use serde::Deserialize;
 use ssufid::{
     PluginError,
-    core::{SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use time::{
     OffsetDateTime, PrimitiveDateTime,
@@ -52,7 +52,9 @@ impl SsufidPlugin for MediaPlugin {
     const DESCRIPTION: &'static str =
         "숭실대학교 글로벌미디어학부 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://media.ssu.ac.kr/board/notices";
+}
 
+impl SsufidPostPlugin for MediaPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

@@ -2,7 +2,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::Deserialize;
 use ssufid::{
     PluginError,
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
 };
 use time::{
     OffsetDateTime, PrimitiveDateTime,
@@ -64,7 +64,9 @@ impl SsufidPlugin for SsfilmPlugin {
     const TITLE: &'static str = "숭실대학교 예술창작학부 영화예술전공";
     const DESCRIPTION: &'static str = "숭실대학교 영화예술전공 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://ssfilm.ssu.ac.kr/notice/index";
+}
 
+impl SsufidPostPlugin for SsfilmPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

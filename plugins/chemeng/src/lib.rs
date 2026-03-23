@@ -6,7 +6,7 @@ use thiserror::Error;
 use url::Url;
 
 use ssufid::{
-    core::{SsufidPlugin, SsufidPost},
+    core::{SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use time::{Date, macros::format_description, macros::offset};
@@ -346,26 +346,25 @@ impl ChemEngPlugin {
             .next()
             .map(|b| b.text().collect::<String>());
         if let Some(body_text) = body_text_nodes
-            && let Some(page_info_start_idx) = body_text.find("페이지정보 :") {
-                let relevant_part = &body_text[page_info_start_idx + "페이지정보 :".len()..];
-                if let Some(slash_idx) = relevant_part.find('/') {
-                    let after_slash = &relevant_part[slash_idx + 1..];
-                    // Take characters until a non-digit (excluding whitespace) is found
-                    let total_pages_str: String = after_slash
-                        .trim()
-                        .chars()
-                        .take_while(|c| c.is_ascii_digit())
-                        .collect();
-                    if let Ok(num_pages) = total_pages_str.parse::<u32>()
-                        && num_pages > 0 {
-                            tracing::debug!(
-                                "Parsed total pages from '페이지정보' text: {}",
-                                num_pages
-                            );
-                            return num_pages;
-                        }
+            && let Some(page_info_start_idx) = body_text.find("페이지정보 :")
+        {
+            let relevant_part = &body_text[page_info_start_idx + "페이지정보 :".len()..];
+            if let Some(slash_idx) = relevant_part.find('/') {
+                let after_slash = &relevant_part[slash_idx + 1..];
+                // Take characters until a non-digit (excluding whitespace) is found
+                let total_pages_str: String = after_slash
+                    .trim()
+                    .chars()
+                    .take_while(|c| c.is_ascii_digit())
+                    .collect();
+                if let Ok(num_pages) = total_pages_str.parse::<u32>()
+                    && num_pages > 0
+                {
+                    tracing::debug!("Parsed total pages from '페이지정보' text: {}", num_pages);
+                    return num_pages;
                 }
             }
+        }
         tracing::warn!(
             "Could not parse total pages from '페이지정보' text. Using fallback of 70 based on observation."
         );
@@ -378,7 +377,9 @@ impl SsufidPlugin for ChemEngPlugin {
     const TITLE: &'static str = "숭실대학교 화학공학과";
     const DESCRIPTION: &'static str = "숭실대학교 화학공학과 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://chemeng.ssu.ac.kr";
+}
 
+impl SsufidPostPlugin for ChemEngPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         if posts_limit == 0 {
             return Ok(Vec::new());

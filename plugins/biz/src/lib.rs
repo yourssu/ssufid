@@ -4,7 +4,7 @@ use thiserror::Error;
 use url::Url;
 
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use time::{
@@ -344,7 +344,9 @@ impl SsufidPlugin for BizPlugin {
     const TITLE: &'static str = "숭실대학교 경영학부 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 경영학부 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = BizPlugin::BIZ_BASE_URL;
+}
 
+impl SsufidPostPlugin for BizPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         if posts_limit == 0 {
             return Ok(vec![]);

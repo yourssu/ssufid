@@ -1,7 +1,7 @@
 use futures::stream::{FuturesOrdered, StreamExt};
 use scraper::{Html, Selector};
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use time::{
@@ -205,7 +205,9 @@ impl SsufidPlugin for InfocomPlugin {
     const TITLE: &'static str = "숭실대학교 전자정보공학부 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 전자정보공학부 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "http://infocom.ssu.ac.kr/kor/notice/undergraduate.php";
+}
 
+impl SsufidPostPlugin for InfocomPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let client = reqwest::Client::builder()
             .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")

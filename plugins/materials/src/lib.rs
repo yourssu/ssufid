@@ -2,7 +2,7 @@ use futures::TryStreamExt;
 use futures::stream::FuturesOrdered;
 use reqwest::Client;
 use scraper::{Html, Selector};
-use ssufid::core::{Attachment, SsufidPlugin, SsufidPost};
+use ssufid::core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin};
 use ssufid::error::PluginError;
 use time::Date;
 use time::format_description::BorrowedFormatItem;
@@ -119,7 +119,9 @@ impl SsufidPlugin for MaterialsPlugin {
     const TITLE: &'static str = "숭실대학교 신소재공학과 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 신소재공학과 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://materials.ssu.ac.kr/bbs/board.php?tbl=bbs51";
+}
 
+impl SsufidPostPlugin for MaterialsPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         tracing::info!("Crawling started. Limit: {}", posts_limit);
 

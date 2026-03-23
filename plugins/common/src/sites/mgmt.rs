@@ -21,7 +21,9 @@ impl ssufid::core::SsufidPlugin for MgmtPlugin {
     const TITLE: &'static str = "숭실대학교 벤처경영학과 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 벤처경영학과 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://mgmt.ssu.ac.kr/%ed%95%99%ec%82%ac%ec%95%88%eb%82%b4/%ea%b3%b5%ec%a7%80%ec%82%ac%ed%95%ad";
+}
 
+impl ssufid::core::SsufidPostPlugin for MgmtPlugin {
     async fn crawl(
         &self,
         posts_limit: u32,

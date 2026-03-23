@@ -6,7 +6,7 @@ use thiserror::Error;
 use url::Url;
 
 use ssufid::{
-    core::{Attachment, SsufidPlugin, SsufidPost},
+    core::{Attachment, SsufidPlugin, SsufidPost, SsufidPostPlugin},
     error::PluginError,
 };
 use time::{Date, format_description, macros::offset};
@@ -255,7 +255,9 @@ impl SsufidPlugin for SsuCatchPlugin {
     const TITLE: &'static str = "숭실대학교 공지사항";
     const DESCRIPTION: &'static str = "숭실대학교 공식 홈페이지의 공지사항을 제공합니다.";
     const BASE_URL: &'static str = "https://scatch.ssu.ac.kr";
+}
 
+impl SsufidPostPlugin for SsuCatchPlugin {
     async fn crawl(&self, posts_limit: u32) -> Result<Vec<SsufidPost>, PluginError> {
         let pages = posts_limit / Self::POSTS_PER_PAGE + 1;
 

@@ -1,0 +1,32 @@
+[package]
+name = "ssufid_ssu_academic_calendar"
+version = "0.1.0"
+description.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+reqwest = { workspace = true, features = [
+  "charset",
+  "http2",
+  "macos-system-configuration",
+  "rustls-tls",
+  "cookies",
+  "gzip",
+  "brotli",
+] }
+scraper = { workspace = true }
+time = { workspace = true, features = [
+  "serde",
+  "macros",
+  "formatting",
+  "parsing",
+] }
+tracing = { workspace = true }
+url = { workspace = true }
+ssufid = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+time = { workspace = true, features = ["macros"] }
