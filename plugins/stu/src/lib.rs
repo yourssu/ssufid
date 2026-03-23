@@ -1,4 +1,4 @@
-use reqwest::header::CONTENT_TYPE;
+use reqwest::{Url, header::CONTENT_TYPE};
 use serde::Deserialize;
 use ssufid::{
     PluginError,
@@ -13,12 +13,22 @@ pub struct StuPlugin;
 
 impl StuPlugin {
     const API_BASE_URL: &'static str = "https://backend.sssupport.shop";
+    const BOARD_NAME: &'static str = "공지사항게시판";
+    const GROUP_CODE: &'static str = "중앙기구";
+    const MEMBER_CODE: &'static str = "";
 
     async fn list_posts(base_url: &str, posts_limit: u32) -> Result<Vec<StuPost>, PluginError> {
+        let mut url = Url::parse(&format!("{base_url}/board/{}/posts/search", Self::BOARD_NAME))
+            .map_err(|e| PluginError::request::<Self>(e.to_string()))?;
+        url.query_pairs_mut()
+            .append_pair("page", "0")
+            .append_pair("take", &posts_limit.to_string())
+            .append_pair("q", "")
+            .append_pair("groupCode", Self::GROUP_CODE)
+            .append_pair("memberCode", Self::MEMBER_CODE);
+
         let res = reqwest::Client::new()
-            .get(format!(
-                "{base_url}/board/공지사항게시판/posts/search?page=0&take={posts_limit}&q="
-            ))
+            .get(url)
             .header(CONTENT_TYPE, "application/json")
             .send()
             .await
